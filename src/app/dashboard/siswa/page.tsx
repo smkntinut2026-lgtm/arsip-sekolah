@@ -63,7 +63,7 @@ export default function SiswaPage() {
     return wajib.every(j => uploadedIds.includes(j.id))
   }
 
-  const kelasList = Array.from(new Set(siswaList.map(s => s.kelas).filter(Boolean))).sort()
+  const kelasList = Array.from(new Set(siswaList.map(s => s.kelas).filter(Boolean) as string[])).sort()
 
   const filtered = siswaList
     .filter(s => s.nama_lengkap.toLowerCase().includes(search.toLowerCase()) || s.nisn.includes(search))
