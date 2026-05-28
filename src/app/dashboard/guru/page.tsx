@@ -289,7 +289,25 @@ export default function GuruPage() {
                   <tr key={guru.id}>
                     <td>
                       <div className="font-semibold text-slate-800">{guru.nama_lengkap}</div>
-                      {guru.gelar && <div className="text-xs text-slate-400">{guru.gelar}</div>}
+                      {guru.gelar && <div className="text-xs text-slate-400 mb-1">{guru.gelar}</div>}
+                      {jenisFileList.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {jenisFileList.map(j => {
+                            const uploaded = (guru.file_guru || []).some(f => f.jenis_file_id === j.id)
+                            return (
+                              <span key={j.id} className={`inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                                uploaded
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : j.wajib
+                                  ? 'bg-rose-100 text-rose-600'
+                                  : 'bg-slate-100 text-slate-400'
+                              }`}>
+                                {uploaded ? '✓' : '–'} {j.nama}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
                     </td>
                     <td className="text-slate-600 font-mono text-sm">{guru.nik || '-'}</td>
                     <td>{guru.pendidikan_terakhir || '-'}</td>
