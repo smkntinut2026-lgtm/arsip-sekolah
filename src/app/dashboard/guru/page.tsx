@@ -39,6 +39,23 @@ export default function GuruPage() {
     pendidikan_terakhir: '', gelar: ''
   })
 
+  // Bulk delete
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  function toggleSelect(id: string) {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  async function handleBulkDelete() {
+    if (selected.size === 0) return
+    if (!confirm(`Hapus ${selected.size} data guru beserta semua filenya?`)) return
+    const ids = Array.from(selected)
+    await supabase.from('data_guru').delete().in('id', ids)
+    toast.success(`${ids.length} data guru berhasil dihapus`)
+    setSelected(new Set())
+    fetchData()
+  }
+
   // File upload
   const [uploadJenisId, setUploadJenisId] = useState('')
   const [uploadNamaFile, setUploadNamaFile] = useState('')
@@ -216,6 +233,11 @@ export default function GuruPage() {
         </div>
         {isAdmin && (
           <div className="flex flex-wrap gap-2">
+            {selected.size > 0 && (
+              <button onClick={handleBulkDelete} className="btn-secondary text-sm text-rose-600 border-rose-200 hover:bg-rose-50">
+                <Trash2 className="w-4 h-4" /> Hapus {selected.size} Terpilih
+              </button>
+            )}
             <button onClick={() => setShowImportModal(true)} className="btn-secondary text-sm">
               <Import className="w-4 h-4" /> Import Excel
             </button>
@@ -256,6 +278,20 @@ export default function GuruPage() {
           <table className="table">
             <thead>
               <tr>
+                {isAdmin && (
+                  <th style={{width: '40px'}}>
+                    <input type="checkbox"
+                      checked={filtered.length > 0 && filtered.every(g => selected.has(g.id))}
+                      onChange={() => {
+                        const allIds = filtered.map(g => g.id)
+                        const allChecked = allIds.every(id => selected.has(id))
+                        if (allChecked) setSelected(new Set())
+                        else setSelected(new Set(allIds))
+                      }}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th>Nama Guru</th>
                 <th>NIK</th>
                 <th>Pendidikan</th>
@@ -286,8 +322,16 @@ export default function GuruPage() {
                 const lengkap = isLengkap(guru)
                 const fileCount = (guru.file_guru || []).length
                 return (
-                  <tr key={guru.id}>
-                    <td>
+                  <tr key={guru.id} className={selected.has(guru.id) ? 'bg-blue-50' : ''}>
+                    {isAdmin && (
+                      <td>
+                        <input type="checkbox"
+                          checked={selected.has(guru.id)}
+                          onChange={() => toggleSelect(guru.id)}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                      </td>
+                    )}
                       <div className="font-semibold text-slate-800">{guru.nama_lengkap}</div>
                       {guru.gelar && <div className="text-xs text-slate-400 mb-1">{guru.gelar}</div>}
                       {jenisFileList.length > 0 && (
