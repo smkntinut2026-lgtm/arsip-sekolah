@@ -16,11 +16,10 @@ import { AppContext } from './context'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/kepala-sekolah', label: 'Kepala Sekolah', icon: UserCheck, adminOnly: true },
   { href: '/dashboard/guru', label: 'Data Guru', icon: GraduationCap },
   { href: '/dashboard/siswa', label: 'Data Siswa', icon: BookOpen },
   { href: '/dashboard/arsip-sekolah', label: 'Arsip Sekolah', icon: FolderArchive },
-  // ✅ BARU: Kepala Sekolah (admin only)
-  { href: '/dashboard/kepala-sekolah', label: 'Kepala Sekolah', icon: UserCheck, adminOnly: true },
   { href: '/dashboard/portal', label: 'Portal Publik', icon: Link2 },
   { href: '/dashboard/jenis-file', label: 'Jenis File', icon: FileText, adminOnly: true },
   { href: '/dashboard/pengguna', label: 'Pengguna', icon: UserCog, adminOnly: true },
