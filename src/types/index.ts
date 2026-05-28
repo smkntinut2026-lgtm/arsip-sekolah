@@ -89,3 +89,20 @@ export interface ArsipSekolah {
   created_at: string
   pengguna?: { nama_lengkap: string }
 }
+
+// ✅ BARU: Kepala Sekolah
+export interface KepalaSekolah {
+  id: string
+  nama_lengkap: string
+  nip: string
+  tempat_lahir: string
+  tanggal_lahir: string | null
+  pendidikan_terakhir: string
+  gelar: string
+  foto_url: string
+  periode_mulai: string | null
+  periode_selesai: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
