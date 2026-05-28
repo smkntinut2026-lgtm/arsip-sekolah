@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useApp } from '../layout'
+import { useApp } from '../context'
 import {
   Plus, Search, Upload, Download, Trash2, Edit3, Eye,
   AlertTriangle, CheckCircle2, FileText, X, Import, FileDown, Paperclip
