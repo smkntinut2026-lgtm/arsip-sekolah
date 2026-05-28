@@ -20,7 +20,7 @@ export interface Pengguna {
 export interface JenisFile {
   id: string
   nama: string
-  kategori: 'guru' | 'siswa'
+  kategori: 'guru' | 'siswa' | 'kepala_sekolah'
   wajib: boolean
   urutan: number
   created_at: string
@@ -90,7 +90,7 @@ export interface ArsipSekolah {
   pengguna?: { nama_lengkap: string }
 }
 
-// ✅ BARU: Kepala Sekolah
+// ✅ Kepala Sekolah
 export interface KepalaSekolah {
   id: string
   nama_lengkap: string
@@ -105,4 +105,18 @@ export interface KepalaSekolah {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+// ✅ File Kepala Sekolah
+export interface FileKepalaSekolah {
+  id: string
+  kepala_sekolah_id: string
+  jenis_file_id: string | null
+  nama_file: string
+  file_url: string
+  file_size: number
+  file_type: string
+  uploaded_by: string | null
+  created_at: string
+  jenis_file?: JenisFile
 }
