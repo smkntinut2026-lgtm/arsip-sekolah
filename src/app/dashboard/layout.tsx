@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, GraduationCap, LogOut,
   Menu, X, School, ChevronRight, User, FileText,
-  BookOpen, UserCog, FolderArchive, Link2
+  BookOpen, UserCog, FolderArchive, Link2, UserCheck  // ✅ tambah UserCheck
 } from 'lucide-react'
 import type { Pengguna, ProfilSekolah } from '@/types'
 import clsx from 'clsx'
@@ -19,6 +19,8 @@ const navItems = [
   { href: '/dashboard/guru', label: 'Data Guru', icon: GraduationCap },
   { href: '/dashboard/siswa', label: 'Data Siswa', icon: BookOpen },
   { href: '/dashboard/arsip-sekolah', label: 'Arsip Sekolah', icon: FolderArchive },
+  // ✅ BARU: Kepala Sekolah (admin only)
+  { href: '/dashboard/kepala-sekolah', label: 'Kepala Sekolah', icon: UserCheck, adminOnly: true },
   { href: '/dashboard/portal', label: 'Portal Publik', icon: Link2 },
   { href: '/dashboard/jenis-file', label: 'Jenis File', icon: FileText, adminOnly: true },
   { href: '/dashboard/pengguna', label: 'Pengguna', icon: UserCog, adminOnly: true },
@@ -146,10 +148,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="hidden lg:block">
                 <nav className="flex items-center gap-1.5 text-sm text-slate-500">
                   {pathname.split('/').filter(Boolean).map((segment, i, arr) => {
+                    // ✅ tambah label kepala-sekolah di breadcrumb
                     const labels: Record<string, string> = {
                       dashboard: 'Dashboard', guru: 'Data Guru', siswa: 'Data Siswa',
                       profil: 'Profil Sekolah', pengguna: 'Pengguna', 'jenis-file': 'Jenis File',
-                      'arsip-sekolah': 'Arsip Sekolah', portal: 'Portal Publik'
+                      'arsip-sekolah': 'Arsip Sekolah', portal: 'Portal Publik',
+                      'kepala-sekolah': 'Kepala Sekolah',  // ✅ BARU
                     }
                     const isLast = i === arr.length - 1
                     return (
