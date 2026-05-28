@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useApp } from './context'
 import {
   GraduationCap, BookOpen, FileText, Users,
-  AlertTriangle, TrendingUp, Clock, CheckCircle2
+  AlertTriangle, TrendingUp, CheckCircle2, HardDrive
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -16,6 +16,17 @@ interface Stats {
   totalFileSiswa: number
   guruBelumLengkap: number
   siswaBelumLengkap: number
+  storageUsedBytes: number
+}
+
+const STORAGE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024 // 1 GB
+
+function formatBytes(bytes: number) {
+  if (bytes === 0) return '0 B'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
 }
 
 export default function DashboardPage() {
@@ -23,7 +34,8 @@ export default function DashboardPage() {
   const { user, profil } = useApp()
   const [stats, setStats] = useState<Stats>({
     totalGuru: 0, totalSiswa: 0, totalFileGuru: 0,
-    totalFileSiswa: 0, guruBelumLengkap: 0, siswaBelumLengkap: 0
+    totalFileSiswa: 0, guruBelumLengkap: 0, siswaBelumLengkap: 0,
+    storageUsedBytes: 0
   })
   const [loading, setLoading] = useState(true)
 
@@ -35,11 +47,16 @@ export default function DashboardPage() {
     const [guru, siswa, fileGuru, fileSiswa, jenisGuru, jenisSiswa] = await Promise.all([
       supabase.from('data_guru').select('id', { count: 'exact', head: true }),
       supabase.from('data_siswa').select('id', { count: 'exact', head: true }),
-      supabase.from('file_guru').select('id', { count: 'exact', head: true }),
-      supabase.from('file_siswa').select('id', { count: 'exact', head: true }),
+      supabase.from('file_guru').select('file_size'),
+      supabase.from('file_siswa').select('file_size'),
       supabase.from('jenis_file').select('id').eq('kategori', 'guru').eq('wajib', true),
       supabase.from('jenis_file').select('id').eq('kategori', 'siswa').eq('wajib', true),
     ])
+
+    // Hitung total storage dari file_size
+    const storageGuru = (fileGuru.data || []).reduce((sum, f) => sum + (f.file_size || 0), 0)
+    const storageSiswa = (fileSiswa.data || []).reduce((sum, f) => sum + (f.file_size || 0), 0)
+    const storageUsedBytes = storageGuru + storageSiswa
 
     // Check incomplete
     let guruBelumLengkap = 0
@@ -74,13 +91,21 @@ export default function DashboardPage() {
     setStats({
       totalGuru: guru.count || 0,
       totalSiswa: siswa.count || 0,
-      totalFileGuru: fileGuru.count || 0,
-      totalFileSiswa: fileSiswa.count || 0,
+      totalFileGuru: (fileGuru.data || []).length,
+      totalFileSiswa: (fileSiswa.data || []).length,
       guruBelumLengkap,
       siswaBelumLengkap,
+      storageUsedBytes,
     })
     setLoading(false)
   }
+
+  const storagePercent = Math.min((stats.storageUsedBytes / STORAGE_LIMIT_BYTES) * 100, 100)
+  const storageColor = storagePercent > 80 ? 'from-rose-400 to-rose-500'
+    : storagePercent > 60 ? 'from-amber-400 to-amber-500'
+    : 'from-emerald-400 to-emerald-500'
+  const storageBg = storagePercent > 80 ? 'bg-rose-50' : storagePercent > 60 ? 'bg-amber-50' : 'bg-emerald-50'
+  const storageText = storagePercent > 80 ? 'text-rose-600' : storagePercent > 60 ? 'text-amber-600' : 'text-emerald-600'
 
   const statCards = [
     {
@@ -168,6 +193,55 @@ export default function DashboardPage() {
             </Link>
           )
         })}
+      </div>
+
+      {/* Storage Widget */}
+      <div className="card p-6 mb-6">
+        <h3 className="font-display font-semibold text-slate-700 mb-4 flex items-center gap-2">
+          <HardDrive className="w-5 h-5 text-slate-500" />
+          Kapasitas Penyimpanan
+        </h3>
+        {loading ? (
+          <div className="h-16 bg-slate-100 rounded-lg animate-pulse" />
+        ) : (
+          <div>
+            <div className="flex items-end justify-between mb-2">
+              <div>
+                <span className={`text-2xl font-display font-bold ${storageText}`}>
+                  {formatBytes(stats.storageUsedBytes)}
+                </span>
+                <span className="text-slate-400 text-sm ml-1">terpakai</span>
+              </div>
+              <div className="text-right">
+                <span className="text-slate-500 text-sm">
+                  Sisa: <strong>{formatBytes(STORAGE_LIMIT_BYTES - stats.storageUsedBytes)}</strong>
+                </span>
+                <p className="text-xs text-slate-400">dari total 1 GB</p>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="h-3 bg-slate-100 rounded-full overflow-hidden mb-2">
+              <div
+                className={`h-full bg-gradient-to-r ${storageColor} rounded-full transition-all duration-700`}
+                style={{ width: `${storagePercent}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${storageBg} ${storageText} font-medium`}>
+                {storagePercent > 80 ? (
+                  <><AlertTriangle className="w-3 h-3" /> Hampir penuh ({storagePercent.toFixed(1)}%)</>
+                ) : storagePercent > 60 ? (
+                  <><AlertTriangle className="w-3 h-3" /> Cukup terpakai ({storagePercent.toFixed(1)}%)</>
+                ) : (
+                  <><CheckCircle2 className="w-3 h-3" /> Masih aman ({storagePercent.toFixed(1)}%)</>
+                )}
+              </div>
+              <span className="text-xs text-slate-400">
+                {stats.totalFileGuru + stats.totalFileSiswa} file total
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Status cards */}
