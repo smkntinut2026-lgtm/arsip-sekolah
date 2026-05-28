@@ -6,13 +6,32 @@ import { useApp } from '../context'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Edit3, Trash2, Save, X, Upload, User,
-  CheckCircle2, Clock, Calendar, GraduationCap, BadgeCheck
+  CheckCircle2, Clock, Calendar, GraduationCap, BadgeCheck,
+  FileText, Download, Paperclip, AlertTriangle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import { id as localeId } from 'date-fns/locale'
-import type { KepalaSekolah } from '@/types'
+import type { KepalaSekolah, JenisFile } from '@/types'
+
+// Interface tambahan untuk file kepala sekolah
+interface FileKepalaSekolah {
+  id: string
+  kepala_sekolah_id: string
+  jenis_file_id: string | null
+  nama_file: string
+  file_url: string
+  file_size: number
+  file_type: string
+  uploaded_by: string | null
+  created_at: string
+  jenis_file?: JenisFile
+}
+
+interface KepalaSekolahWithFiles extends KepalaSekolah {
+  file_kepala_sekolah?: FileKepalaSekolah[]
+}
 
 const EMPTY_FORM = {
   nama_lengkap: '',
@@ -26,22 +45,51 @@ const EMPTY_FORM = {
   is_active: true,
 }
 
+function formatBytes(bytes: number) {
+  if (bytes === 0) return '0 B'
+  const k = 1024, sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+function formatNama(ks: KepalaSekolah) {
+  // Gelar setelah nama, dipisah koma
+  if (!ks.gelar) return ks.nama_lengkap
+  return `${ks.nama_lengkap}, ${ks.gelar}`
+}
+
 export default function KepalaSekolahPage() {
   const supabase = createClient()
   const { user } = useApp()
   const router = useRouter()
+  const isAdmin = user?.role === 'admin'
 
-  const [list, setList] = useState<KepalaSekolah[]>([])
+  const [list, setList] = useState<KepalaSekolahWithFiles[]>([])
+  const [jenisFileList, setJenisFileList] = useState<JenisFile[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Modal data
   const [showModal, setShowModal] = useState(false)
-  const [editing, setEditing] = useState<KepalaSekolah | null>(null)
+  const [showFileModal, setShowFileModal] = useState(false)
+  const [editing, setEditing] = useState<KepalaSekolahWithFiles | null>(null)
+  const [selectedKS, setSelectedKS] = useState<KepalaSekolahWithFiles | null>(null)
+
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
 
+  // Form data
   const [form, setForm] = useState(EMPTY_FORM)
   const [fotoFile, setFotoFile] = useState<File | null>(null)
   const [fotoPreview, setFotoPreview] = useState('')
   const fotoRef = useRef<HTMLInputElement>(null)
+
+  // File upload state
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadNamaFile, setUploadNamaFile] = useState('')
+  const [uploadJenisId, setUploadJenisId] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (user && user.role !== 'admin') { router.push('/dashboard'); return }
@@ -50,13 +98,31 @@ export default function KepalaSekolahPage() {
 
   async function fetchData() {
     setLoading(true)
+    const [ksRes, jenisRes] = await Promise.all([
+      supabase
+        .from('kepala_sekolah')
+        .select('*, file_kepala_sekolah(*, jenis_file(*))')
+        .order('is_active', { ascending: false })
+        .order('periode_mulai', { ascending: false }),
+      supabase
+        .from('jenis_file')
+        .select('*')
+        .eq('kategori', 'kepala_sekolah')
+        .order('urutan'),
+    ])
+    setList(ksRes.data || [])
+    setJenisFileList(jenisRes.data || [])
+    setLoading(false)
+  }
+
+  async function refreshSelectedKS(id: string) {
     const { data } = await supabase
       .from('kepala_sekolah')
-      .select('*')
-      .order('is_active', { ascending: false })
-      .order('periode_mulai', { ascending: false })
-    setList(data || [])
-    setLoading(false)
+      .select('*, file_kepala_sekolah(*, jenis_file(*))')
+      .eq('id', id)
+      .single()
+    if (data) setSelectedKS(data)
+    fetchData()
   }
 
   function openAdd() {
@@ -67,7 +133,7 @@ export default function KepalaSekolahPage() {
     setShowModal(true)
   }
 
-  function openEdit(ks: KepalaSekolah) {
+  function openEdit(ks: KepalaSekolahWithFiles) {
     setEditing(ks)
     setForm({
       nama_lengkap: ks.nama_lengkap,
@@ -83,6 +149,14 @@ export default function KepalaSekolahPage() {
     setFotoFile(null)
     setFotoPreview('')
     setShowModal(true)
+  }
+
+  function openFileModal(ks: KepalaSekolahWithFiles) {
+    setSelectedKS(ks)
+    setUploadFile(null)
+    setUploadNamaFile('')
+    setUploadJenisId('')
+    setShowFileModal(true)
   }
 
   function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -126,7 +200,6 @@ export default function KepalaSekolahPage() {
         updated_at: new Date().toISOString(),
       }
 
-      // Jika set aktif, nonaktifkan yang lain dulu
       if (form.is_active) {
         await supabase
           .from('kepala_sekolah')
@@ -136,15 +209,12 @@ export default function KepalaSekolahPage() {
 
       if (editing) {
         const { error } = await supabase
-          .from('kepala_sekolah')
-          .update(payload)
-          .eq('id', editing.id)
+          .from('kepala_sekolah').update(payload).eq('id', editing.id)
         if (error) throw error
         toast.success('Data kepala sekolah berhasil diperbarui')
       } else {
         const { error } = await supabase
-          .from('kepala_sekolah')
-          .insert(payload)
+          .from('kepala_sekolah').insert(payload)
         if (error) throw error
         toast.success('Data kepala sekolah berhasil ditambahkan')
       }
@@ -157,14 +227,59 @@ export default function KepalaSekolahPage() {
     setSaving(false)
   }
 
-  async function handleDelete(ks: KepalaSekolah) {
-    if (!confirm(`Hapus data "${ks.nama_lengkap}"?`)) return
+  async function handleDelete(ks: KepalaSekolahWithFiles) {
+    if (!confirm(`Hapus data "${ks.nama_lengkap}" beserta semua filenya?`)) return
     setDeleting(ks.id)
     const { error } = await supabase.from('kepala_sekolah').delete().eq('id', ks.id)
-    if (error) { toast.error('Gagal menghapus: ' + error.message) }
-    else { toast.success('Data berhasil dihapus') }
+    if (error) toast.error('Gagal menghapus: ' + error.message)
+    else toast.success('Data berhasil dihapus')
     setDeleting(null)
     fetchData()
+  }
+
+  async function handleUploadFile() {
+    if (!uploadFile || !uploadNamaFile.trim() || !selectedKS) {
+      toast.error('Nama file dan file harus diisi'); return
+    }
+    setUploading(true)
+    try {
+      const ext = uploadFile.name.split('.').pop()
+      const path = `${selectedKS.id}/${Date.now()}.${ext}`
+      const { error: storageErr } = await supabase.storage
+        .from('file-kepala-sekolah').upload(path, uploadFile)
+      if (storageErr) throw storageErr
+
+      const { data: urlData } = supabase.storage
+        .from('file-kepala-sekolah').getPublicUrl(path)
+
+      await supabase.from('file_kepala_sekolah').insert({
+        kepala_sekolah_id: selectedKS.id,
+        jenis_file_id: uploadJenisId || null,
+        nama_file: uploadNamaFile.trim(),
+        file_url: urlData.publicUrl,
+        file_size: uploadFile.size,
+        file_type: uploadFile.type,
+        uploaded_by: user?.id,
+      })
+
+      toast.success('File berhasil diupload')
+      setUploadFile(null)
+      setUploadNamaFile('')
+      setUploadJenisId('')
+      refreshSelectedKS(selectedKS.id)
+    } catch (err: any) {
+      toast.error('Gagal upload: ' + err.message)
+    }
+    setUploading(false)
+  }
+
+  async function handleDeleteFile(file: FileKepalaSekolah) {
+    if (!confirm('Hapus file ini?')) return
+    const path = file.file_url.split('/file-kepala-sekolah/')[1]
+    await supabase.storage.from('file-kepala-sekolah').remove([path])
+    await supabase.from('file_kepala_sekolah').delete().eq('id', file.id)
+    toast.success('File dihapus')
+    if (selectedKS) refreshSelectedKS(selectedKS.id)
   }
 
   function formatTanggal(val: string | null) {
@@ -210,8 +325,7 @@ export default function KepalaSekolahPage() {
                 {aktif.foto_url ? (
                   <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white shadow-card">
                     <Image
-                      src={aktif.foto_url}
-                      alt={aktif.nama_lengkap}
+                      src={aktif.foto_url} alt={aktif.nama_lengkap}
                       width={80} height={80}
                       className="w-full h-full object-cover"
                     />
@@ -227,7 +341,7 @@ export default function KepalaSekolahPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h2 className="text-lg font-display font-bold text-slate-800">
-                    {aktif.gelar ? `${aktif.gelar} ${aktif.nama_lengkap}` : aktif.nama_lengkap}
+                    {formatNama(aktif)}
                   </h2>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
                     <CheckCircle2 className="w-3 h-3" /> Aktif
@@ -252,10 +366,23 @@ export default function KepalaSekolahPage() {
                     {aktif.periode_selesai ? ` – ${formatTanggal(aktif.periode_selesai)}` : ' – Sekarang'}
                   </p>
                 )}
+                {/* File count badge */}
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1 text-xs text-primary-600 bg-primary-50 border border-primary-100 px-2 py-0.5 rounded-full">
+                    <Paperclip className="w-3 h-3" />
+                    {(aktif.file_kepala_sekolah || []).length} file tersimpan
+                  </span>
+                </div>
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 flex-shrink-0">
+              <div className="flex flex-col gap-2 flex-shrink-0">
+                <button
+                  onClick={() => openFileModal(aktif)}
+                  className="btn-secondary text-xs px-3 py-1.5"
+                >
+                  <Paperclip className="w-3.5 h-3.5" /> Kelola File
+                </button>
                 <button
                   onClick={() => openEdit(aktif)}
                   className="btn-secondary text-xs px-3 py-1.5"
@@ -298,8 +425,7 @@ export default function KepalaSekolahPage() {
                   {ks.foto_url ? (
                     <div className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 flex-shrink-0">
                       <Image
-                        src={ks.foto_url}
-                        alt={ks.nama_lengkap}
+                        src={ks.foto_url} alt={ks.nama_lengkap}
                         width={48} height={48}
                         className="w-full h-full object-cover"
                       />
@@ -310,9 +436,7 @@ export default function KepalaSekolahPage() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-700 text-sm">
-                      {ks.gelar ? `${ks.gelar} ${ks.nama_lengkap}` : ks.nama_lengkap}
-                    </p>
+                    <p className="font-semibold text-slate-700 text-sm">{formatNama(ks)}</p>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                       {ks.nip && (
                         <span className="text-xs text-slate-400">NIP: {ks.nip}</span>
@@ -324,9 +448,20 @@ export default function KepalaSekolahPage() {
                           {ks.periode_selesai ? ` – ${formatTanggal(ks.periode_selesai)}` : ''}
                         </span>
                       )}
+                      <span className="text-xs text-slate-400 flex items-center gap-1">
+                        <Paperclip className="w-3 h-3" />
+                        {(ks.file_kepala_sekolah || []).length} file
+                      </span>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => openFileModal(ks)}
+                      className="btn-icon text-primary-500"
+                      title="Kelola File"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => openEdit(ks)}
                       className="btn-icon text-slate-500"
@@ -359,36 +494,38 @@ export default function KepalaSekolahPage() {
         </div>
       )}
 
-      {/* ===================== MODAL ===================== */}
+      {/* ==================== MODAL TAMBAH/EDIT ==================== */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h3 className="font-display font-bold text-slate-800">
-                {editing ? 'Edit Kepala Sekolah' : 'Tambah Kepala Sekolah'}
-              </h3>
+        <div
+          className="modal-overlay"
+          onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}
+        >
+          <div className="modal-content">
+            <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
+              <div>
+                <h3 className="font-display font-bold text-lg">
+                  {editing ? 'Edit Kepala Sekolah' : 'Tambah Kepala Sekolah'}
+                </h3>
+                <p className="text-white/70 text-sm">Lengkapi data di bawah ini</p>
+              </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="btn-icon text-slate-400"
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-5 space-y-4">
-
+            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               {/* Foto Upload */}
               <div>
                 <label className="label">Foto</label>
                 <div className="flex items-center gap-4">
                   <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden bg-slate-50 flex-shrink-0">
-                    {fotoPreview || (editing?.foto_url) ? (
+                    {fotoPreview || editing?.foto_url ? (
                       <Image
                         src={fotoPreview || editing!.foto_url}
-                        alt="Foto"
-                        width={80} height={80}
+                        alt="Foto" width={80} height={80}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -396,22 +533,11 @@ export default function KepalaSekolahPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <input
-                      ref={fotoRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFotoChange}
-                    />
-                    <button
-                      onClick={() => fotoRef.current?.click()}
-                      className="btn-secondary text-sm"
-                    >
+                    <input ref={fotoRef} type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
+                    <button onClick={() => fotoRef.current?.click()} className="btn-secondary text-sm">
                       <Upload className="w-4 h-4" /> Pilih Foto
                     </button>
-                    <p className="text-xs text-slate-400 mt-1.5">
-                      JPG, PNG. Maks 5MB
-                    </p>
+                    <p className="text-xs text-slate-400 mt-1.5">JPG, PNG. Maks 5MB</p>
                     {fotoPreview && (
                       <button
                         onClick={() => { setFotoFile(null); setFotoPreview('') }}
@@ -426,24 +552,31 @@ export default function KepalaSekolahPage() {
 
               {/* Nama */}
               <div>
-                <label className="label">Nama Lengkap *</label>
+                <label className="label">Nama Lengkap * <span className="text-slate-400 font-normal">(tanpa gelar)</span></label>
                 <input
                   className="input"
                   value={form.nama_lengkap}
                   onChange={e => setForm({ ...form, nama_lengkap: e.target.value })}
-                  placeholder="Nama lengkap tanpa gelar"
+                  placeholder="Contoh: Ahmad Fauzi"
                 />
               </div>
 
               {/* Gelar */}
               <div>
-                <label className="label">Gelar</label>
+                <label className="label">Gelar <span className="text-slate-400 font-normal">(akan tampil setelah nama)</span></label>
                 <input
                   className="input"
                   value={form.gelar}
                   onChange={e => setForm({ ...form, gelar: e.target.value })}
-                  placeholder="Contoh: Drs., M.Pd."
+                  placeholder="Contoh: S.Pd., M.M."
                 />
+                {form.nama_lengkap && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Preview: <span className="font-medium text-slate-600">
+                      {form.nama_lengkap}{form.gelar ? `, ${form.gelar}` : ''}
+                    </span>
+                  </p>
+                )}
               </div>
 
               {/* NIP */}
@@ -470,9 +603,7 @@ export default function KepalaSekolahPage() {
                 </div>
                 <div>
                   <label className="label">Tanggal Lahir</label>
-                  <input
-                    type="date"
-                    className="input"
+                  <input type="date" className="input"
                     value={form.tanggal_lahir}
                     onChange={e => setForm({ ...form, tanggal_lahir: e.target.value })}
                   />
@@ -500,21 +631,16 @@ export default function KepalaSekolahPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Periode Mulai</label>
-                  <input
-                    type="date"
-                    className="input"
+                  <input type="date" className="input"
                     value={form.periode_mulai}
                     onChange={e => setForm({ ...form, periode_mulai: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="label">Periode Selesai</label>
-                  <input
-                    type="date"
-                    className="input"
+                  <input type="date" className="input"
                     value={form.periode_selesai}
                     onChange={e => setForm({ ...form, periode_selesai: e.target.value })}
-                    placeholder="Kosongkan jika masih aktif"
                   />
                 </div>
               </div>
@@ -533,28 +659,176 @@ export default function KepalaSekolahPage() {
                 </label>
               </div>
               {form.is_active && (
-                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                  ⚠️ Data kepala sekolah lain yang aktif akan otomatis dinonaktifkan.
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  Kepala sekolah lain yang aktif akan otomatis dinonaktifkan.
                 </p>
               )}
             </div>
 
-            {/* Modal Footer */}
             <div className="flex gap-3 p-5 border-t border-slate-100">
-              <button
-                onClick={() => setShowModal(false)}
-                className="btn-secondary flex-1"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="btn-primary flex-1"
-              >
+              <button onClick={() => setShowModal(false)} className="btn-secondary flex-1">Batal</button>
+              <button onClick={handleSave} disabled={saving} className="btn-primary flex-1">
                 {saving ? <div className="spinner" /> : <Save className="w-4 h-4" />}
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL FILE ==================== */}
+      {showFileModal && selectedKS && (
+        <div
+          className="modal-overlay"
+          onClick={e => { if (e.target === e.currentTarget) setShowFileModal(false) }}
+        >
+          <div className="modal-content max-w-2xl">
+            <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
+              <div>
+                <h2 className="font-display font-bold text-lg">{formatNama(selectedKS)}</h2>
+                <p className="text-white/70 text-sm">Arsip File Kepala Sekolah</p>
+              </div>
+              <button
+                onClick={() => setShowFileModal(false)}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Daftar File Tersimpan */}
+              <div>
+                <h3 className="font-semibold text-slate-700 mb-3 text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary-500" />
+                  File Tersimpan ({(selectedKS.file_kepala_sekolah || []).length})
+                </h3>
+                {(selectedKS.file_kepala_sekolah || []).length === 0 ? (
+                  <div className="text-center py-6 text-slate-400 bg-slate-50 rounded-xl text-sm">
+                    Belum ada file yang diupload
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(selectedKS.file_kepala_sekolah || []).map((file: FileKepalaSekolah) => (
+                      <div key={file.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-4 h-4 text-primary-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-slate-800 truncate">{file.nama_file}</p>
+                          <p className="text-xs text-slate-400">
+                            {file.jenis_file?.nama && `${file.jenis_file.nama} · `}
+                            {formatBytes(file.file_size)} · {format(new Date(file.created_at), 'dd MMM yyyy', { locale: localeId })}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <a href={file.file_url} target="_blank" className="btn-icon" title="Download">
+                            <Download className="w-4 h-4" />
+                          </a>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDeleteFile(file)}
+                              className="btn-icon text-rose-400 hover:bg-rose-50 hover:text-rose-600"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Form Upload */}
+              {isAdmin && (
+                <div className="border-t border-slate-100 pt-5">
+                  <h3 className="font-semibold text-slate-700 mb-3 text-sm flex items-center gap-2">
+                    <Upload className="w-4 h-4 text-emerald-500" />
+                    Upload File Baru
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="label">Nama File *</label>
+                      <input
+                        className="input"
+                        placeholder="Nama deskriptif untuk file ini"
+                        value={uploadNamaFile}
+                        onChange={e => setUploadNamaFile(e.target.value)}
+                      />
+                    </div>
+
+                    {jenisFileList.length > 0 && (
+                      <div>
+                        <label className="label">Jenis File</label>
+                        <select
+                          className="input"
+                          value={uploadJenisId}
+                          onChange={e => setUploadJenisId(e.target.value)}
+                        >
+                          <option value="">— Pilih Jenis File (opsional) —</option>
+                          {jenisFileList.map(j => (
+                            <option key={j.id} value={j.id}>{j.nama}{j.wajib ? ' *' : ''}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Drop zone */}
+                    <div
+                      className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
+                      onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={e => {
+                        e.preventDefault(); setDragOver(false)
+                        const f = e.dataTransfer.files[0]
+                        if (f) {
+                          setUploadFile(f)
+                          if (!uploadNamaFile) setUploadNamaFile(f.name.replace(/\.[^.]+$/, ''))
+                        }
+                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={e => {
+                          const f = e.target.files?.[0]
+                          if (f) {
+                            setUploadFile(f)
+                            if (!uploadNamaFile) setUploadNamaFile(f.name.replace(/\.[^.]+$/, ''))
+                          }
+                        }}
+                      />
+                      {uploadFile ? (
+                        <div className="text-center">
+                          <FileText className="w-8 h-8 text-primary-500 mx-auto mb-2" />
+                          <p className="font-medium text-slate-700">{uploadFile.name}</p>
+                          <p className="text-sm text-slate-400">{formatBytes(uploadFile.size)}</p>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <Upload className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                          <p className="text-slate-500 text-sm">Klik atau seret file ke sini</p>
+                          <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, DOCX (maks 50MB)</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={handleUploadFile}
+                      disabled={uploading || !uploadFile}
+                      className="btn-primary w-full"
+                    >
+                      {uploading ? <div className="spinner" /> : <Upload className="w-4 h-4" />}
+                      {uploading ? 'Mengupload...' : 'Upload File'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
