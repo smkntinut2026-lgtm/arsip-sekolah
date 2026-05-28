@@ -16,6 +16,12 @@ export default function LoginPage() {
   const [profil, setProfil] = useState<ProfilSekolah | null>(null)
 
   useEffect(() => {
+    // Cek kalau sudah login, langsung redirect
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        window.location.replace('/dashboard')
+      }
+    })
     fetchProfil()
   }, [])
 
@@ -32,18 +38,15 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         toast.error(error.message === 'Invalid login credentials'
           ? 'Email atau password salah'
           : error.message)
         setLoading(false)
-      } else {
+      } else if (data.session) {
         toast.success('Berhasil masuk!')
-        // Hard redirect agar cookie session terbaca middleware
-        setTimeout(() => {
-          window.location.replace('/dashboard')
-        }, 500)
+        window.location.replace('/dashboard')
       }
     } catch {
       setLoading(false)
