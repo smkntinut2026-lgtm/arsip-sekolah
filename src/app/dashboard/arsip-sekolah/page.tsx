@@ -218,6 +218,24 @@ export default function ArsipSekolahPage() {
     setSaving(false)
   }
 
+  async function handleDownload(fileUrl: string, namaFile: string) {
+    try {
+      const res = await fetch(fileUrl)
+      if (!res.ok) throw new Error('Gagal mengambil file')
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = namaFile
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      toast.error('Gagal mendownload: ' + err.message)
+    }
+  }
+
   function openEdit(arsip: ArsipSekolah) {
     setSelectedFile(arsip)
     setEditNama(arsip.nama_file)
@@ -320,6 +338,7 @@ export default function ArsipSekolahPage() {
             onView={(f) => { setSelectedFile(f); setShowViewModal(true) }}
             onEdit={openEdit}
             onDelete={handleDelete}
+            onDownload={handleDownload}
           />
         </div>
       ) : (
@@ -352,6 +371,7 @@ export default function ArsipSekolahPage() {
                 onView={(f) => { setSelectedFile(f); setShowViewModal(true) }}
                 onEdit={openEdit}
                 onDelete={handleDelete}
+                onDownload={handleDownload}
               />
             </div>
           ))}
@@ -557,13 +577,12 @@ export default function ArsipSekolahPage() {
                 >
                   <Eye className="w-4 h-4" /> Lihat File
                 </a>
-                <a
-                  href={selectedFile.file_url}
-                  download
+                <button
+                  onClick={() => handleDownload(selectedFile.file_url, selectedFile.nama_file)}
                   className="btn-primary flex-1"
                 >
                   <Download className="w-4 h-4" /> Download
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -583,6 +602,7 @@ function FileTable({
   onView,
   onEdit,
   onDelete,
+  onDownload,
 }: {
   files: ArsipSekolah[]
   isAdmin: boolean
@@ -592,6 +612,7 @@ function FileTable({
   onView: (f: ArsipSekolah) => void
   onEdit: (f: ArsipSekolah) => void
   onDelete: (f: ArsipSekolah) => void
+  onDownload: (fileUrl: string, namaFile: string) => void
 }) {
   const ids = files.map(f => f.id)
   const allChecked = ids.length > 0 && ids.every(id => selected.has(id))
@@ -650,9 +671,9 @@ function FileTable({
                   <button onClick={() => onView(file)} className="btn-icon" title="Lihat Detail">
                     <Eye className="w-4 h-4" />
                   </button>
-                  <a href={file.file_url} download className="btn-icon" title="Download">
+                  <button onClick={() => onDownload(file.file_url, file.nama_file)} className="btn-icon" title="Download">
                     <Download className="w-4 h-4" />
-                  </a>
+                  </button>
                   {isAdmin && (
                     <>
                       <button onClick={() => onEdit(file)} className="btn-icon" title="Edit Info">
