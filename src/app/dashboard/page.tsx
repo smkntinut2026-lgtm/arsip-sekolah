@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useApp } from './layout'
+import { useApp } from './context'
 import {
   GraduationCap, BookOpen, FileText, Users,
   AlertTriangle, TrendingUp, Clock, CheckCircle2
