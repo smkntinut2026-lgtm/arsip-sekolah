@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useApp } from '../layout'
+import { useApp } from '../context'
 import { Plus, Trash2, Edit3, X, FileText, GraduationCap, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { JenisFile } from '@/types'
