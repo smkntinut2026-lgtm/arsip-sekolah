@@ -17,7 +17,7 @@ import { AppContext } from './context'
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/kepala-sekolah', label: 'Kepala Sekolah', icon: UserCheck, adminOnly: true },
-  { href: '/dashboard/guru', label: 'Data Guru', icon: GraduationCap },
+  { href: '/dashboard/guru', label: 'Data Guru & Tendik', icon: GraduationCap },
   { href: '/dashboard/siswa', label: 'Data Siswa', icon: BookOpen },
   { href: '/dashboard/arsip-sekolah', label: 'Arsip Sekolah', icon: FolderArchive },
   { href: '/dashboard/portal', label: 'Portal Publik', icon: Link2 },
