@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useApp } from '../context'
-import { Plus, Trash2, Edit3, X, FileText, GraduationCap, BookOpen } from 'lucide-react'
+import { Plus, Trash2, Edit3, X, FileText, GraduationCap, BookOpen, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { JenisFile } from '@/types'
 import { useRouter } from 'next/navigation'
@@ -17,8 +17,8 @@ export default function JenisFilePage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editItem, setEditItem] = useState<JenisFile | null>(null)
-  const [form, setForm] = useState({ nama: '', kategori: 'guru' as 'guru' | 'siswa', wajib: false, urutan: 0 })
-  const [activeTab, setActiveTab] = useState<'guru' | 'siswa'>('guru')
+  const [form, setForm] = useState({ nama: '', kategori: 'guru' as 'guru' | 'siswa' | 'kepala_sekolah', wajib: false, urutan: 0 })
+  const [activeTab, setActiveTab] = useState<'guru' | 'siswa' | 'kepala_sekolah'>('guru')
 
   useEffect(() => {
     if (user && user.role !== 'admin') { router.push('/dashboard'); return }
@@ -46,7 +46,7 @@ export default function JenisFilePage() {
     }
     setShowModal(false)
     setEditItem(null)
-    setForm({ nama: '', kategori: 'guru', wajib: false, urutan: 0 })
+    setForm({ nama: '', kategori: 'guru' as 'guru' | 'siswa' | 'kepala_sekolah', wajib: false, urutan: 0 })
     fetchData()
   }
 
@@ -59,6 +59,7 @@ export default function JenisFilePage() {
 
   const guruFiles = jenisFileList.filter(j => j.kategori === 'guru')
   const siswaFiles = jenisFileList.filter(j => j.kategori === 'siswa')
+  const kepalaFiles = jenisFileList.filter(j => j.kategori === 'kepala_sekolah')
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -73,10 +74,11 @@ export default function JenisFilePage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         {[
           { key: 'guru' as const, label: 'Guru', icon: GraduationCap, count: guruFiles.length },
           { key: 'siswa' as const, label: 'Siswa', icon: BookOpen, count: siswaFiles.length },
+          { key: 'kepala_sekolah' as const, label: 'Kepala Sekolah', icon: UserCheck, count: kepalaFiles.length },
         ].map(tab => {
           const Icon = tab.icon
           return (
@@ -103,15 +105,15 @@ export default function JenisFilePage() {
               <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse" />
             ))}
           </div>
-        ) : (activeTab === 'guru' ? guruFiles : siswaFiles).length === 0 ? (
+        ) : (activeTab === 'guru' ? guruFiles : activeTab === 'siswa' ? siswaFiles : kepalaFiles).length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <FileText className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-            <p className="font-medium">Belum ada jenis file untuk {activeTab}</p>
+            <p className="font-medium">Belum ada jenis file untuk {activeTab === 'kepala_sekolah' ? 'Kepala Sekolah' : activeTab}</p>
             <p className="text-sm mt-1">Klik &ldquo;Tambah Jenis File&rdquo; untuk mulai</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-50">
-            {(activeTab === 'guru' ? guruFiles : siswaFiles).map((item, index) => (
+            {(activeTab === 'guru' ? guruFiles : activeTab === 'siswa' ? siswaFiles : kepalaFiles).map((item, index) => (
               <div key={item.id} className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center flex-shrink-0 font-bold text-primary-700 text-sm">
                   {item.urutan || index + 1}
@@ -175,9 +177,10 @@ export default function JenisFilePage() {
               </div>
               <div>
                 <label className="label">Kategori *</label>
-                <select className="input" value={form.kategori} onChange={e => setForm({ ...form, kategori: e.target.value as any })}>
+                <select className="input" value={form.kategori} onChange={e => setForm({ ...form, kategori: e.target.value as 'guru' | 'siswa' | 'kepala_sekolah' })}>
                   <option value="guru">Guru</option>
                   <option value="siswa">Siswa</option>
+                  <option value="kepala_sekolah">Kepala Sekolah</option>
                 </select>
               </div>
               <div>
