@@ -282,6 +282,24 @@ export default function KepalaSekolahPage() {
     if (selectedKS) refreshSelectedKS(selectedKS.id)
   }
 
+  async function handleDownload(fileUrl: string, namaFile: string) {
+    try {
+      const res = await fetch(fileUrl)
+      if (!res.ok) throw new Error('Gagal mengambil file')
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = namaFile
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      toast.error('Gagal mendownload: ' + err.message)
+    }
+  }
+
   function formatTanggal(val: string | null) {
     if (!val) return '-'
     try { return format(new Date(val), 'd MMMM yyyy', { locale: localeId }) }
@@ -723,9 +741,9 @@ export default function KepalaSekolahPage() {
                           </p>
                         </div>
                         <div className="flex gap-1">
-                          <a href={file.file_url} target="_blank" className="btn-icon" title="Download">
+                          <button onClick={() => handleDownload(file.file_url, file.nama_file)} className="btn-icon" title="Download">
                             <Download className="w-4 h-4" />
-                          </a>
+                          </button>
                           {isAdmin && (
                             <button
                               onClick={() => handleDeleteFile(file)}
