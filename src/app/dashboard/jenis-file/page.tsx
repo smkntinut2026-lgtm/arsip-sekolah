@@ -107,7 +107,7 @@ export default function JenisFilePage() {
           <div className="text-center py-16 text-slate-400">
             <FileText className="w-12 h-12 text-slate-200 mx-auto mb-3" />
             <p className="font-medium">Belum ada jenis file untuk {activeTab}</p>
-            <p className="text-sm mt-1">Klik "Tambah Jenis File" untuk mulai</p>
+            <p className="text-sm mt-1">Klik &ldquo;Tambah Jenis File&rdquo; untuk mulai</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-50">

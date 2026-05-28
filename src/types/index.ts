@@ -76,3 +76,16 @@ export interface FileSiswa {
   created_at: string
   jenis_file?: JenisFile
 }
+
+export interface ArsipSekolah {
+  id: string
+  nama_file: string
+  kategori: string
+  deskripsi: string
+  file_url: string
+  file_size: number
+  file_type: string
+  uploaded_by: string | null
+  created_at: string
+  pengguna?: { nama_lengkap: string }
+}

@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, GraduationCap, LogOut,
   Menu, X, School, ChevronRight, User, FileText,
-  BookOpen, UserCog
+  BookOpen, UserCog, FolderArchive, Link2
 } from 'lucide-react'
 import type { Pengguna, ProfilSekolah } from '@/types'
 import clsx from 'clsx'
@@ -18,6 +18,8 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/guru', label: 'Data Guru', icon: GraduationCap },
   { href: '/dashboard/siswa', label: 'Data Siswa', icon: BookOpen },
+  { href: '/dashboard/arsip-sekolah', label: 'Arsip Sekolah', icon: FolderArchive },
+  { href: '/dashboard/portal', label: 'Portal Publik', icon: Link2 },
   { href: '/dashboard/jenis-file', label: 'Jenis File', icon: FileText, adminOnly: true },
   { href: '/dashboard/pengguna', label: 'Pengguna', icon: UserCog, adminOnly: true },
   { href: '/dashboard/profil', label: 'Profil Sekolah', icon: School, adminOnly: true },
@@ -146,7 +148,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {pathname.split('/').filter(Boolean).map((segment, i, arr) => {
                     const labels: Record<string, string> = {
                       dashboard: 'Dashboard', guru: 'Data Guru', siswa: 'Data Siswa',
-                      profil: 'Profil Sekolah', pengguna: 'Pengguna', 'jenis-file': 'Jenis File'
+                      profil: 'Profil Sekolah', pengguna: 'Pengguna', 'jenis-file': 'Jenis File',
+                      'arsip-sekolah': 'Arsip Sekolah', portal: 'Portal Publik'
                     }
                     const isLast = i === arr.length - 1
                     return (
