@@ -332,6 +332,7 @@ export default function GuruPage() {
                         />
                       </td>
                     )}
+                    <td>
                       <div className="font-semibold text-slate-800">{guru.nama_lengkap}</div>
                       {guru.gelar && <div className="text-xs text-slate-400 mb-1">{guru.gelar}</div>}
                       {jenisFileList.length > 0 && (
