@@ -60,19 +60,23 @@ export default function DashboardPage() {
     setLoading(true)
 
     // Semua query dijalankan SERENTAK (parallel), bukan satu per satu
-    const [guru, siswa, fileGuru, fileSiswa, jenisWajibGuru, jenisWajibSiswa] = await Promise.all([
+    const [guru, siswa, fileGuru, fileSiswa, fileArsip, fileKepsek, jenisWajibGuru, jenisWajibSiswa] = await Promise.all([
       supabase.from('data_guru').select('id', { count: 'exact', head: true }),
       supabase.from('data_siswa').select('id', { count: 'exact', head: true }),
       supabase.from('file_guru').select('file_size'),
       supabase.from('file_siswa').select('file_size'),
+      supabase.from('arsip_sekolah').select('file_size'),
+      supabase.from('file_kepala_sekolah').select('file_size'),
       supabase.from('jenis_file').select('id').eq('kategori', 'guru').eq('wajib', true),
       supabase.from('jenis_file').select('id').eq('kategori', 'siswa').eq('wajib', true),
     ])
 
-    // Hitung storage
+    // Hitung storage (semua bucket: guru, siswa, arsip sekolah, kepala sekolah)
     const storageUsedBytes =
       (fileGuru.data || []).reduce((s, f) => s + (f.file_size || 0), 0) +
-      (fileSiswa.data || []).reduce((s, f) => s + (f.file_size || 0), 0)
+      (fileSiswa.data || []).reduce((s, f) => s + (f.file_size || 0), 0) +
+      (fileArsip.data || []).reduce((s, f) => s + (f.file_size || 0), 0) +
+      (fileKepsek.data || []).reduce((s, f) => s + (f.file_size || 0), 0)
 
     // Hitung belum lengkap — query SEKALI saja (bukan per guru)
     let guruBelumLengkap = 0
