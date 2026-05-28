@@ -41,8 +41,7 @@ export default function LoginPage() {
           : error.message)
       } else {
         toast.success('Berhasil masuk!')
-        router.push('/dashboard')
-        router.refresh()
+        window.location.href = '/dashboard'
       }
     } finally {
       setLoading(false)
