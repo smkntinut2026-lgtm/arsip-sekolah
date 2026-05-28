@@ -125,7 +125,7 @@ export default function PortalPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
           {[
             { label: 'Arsip Sekolah', value: arsipList.length, icon: FolderArchive, color: 'from-violet-500 to-purple-600' },
-            { label: 'Guru', value: guruList.length, sub: `${totalGuruFiles} file`, icon: GraduationCap, color: 'from-blue-500 to-primary-600' },
+            { label: 'Guru & Tendik', value: guruList.length, sub: `${totalGuruFiles} file`, icon: GraduationCap, color: 'from-blue-500 to-primary-600' },
             { label: 'Siswa', value: siswaList.length, sub: `${totalSiswaFiles} file`, icon: BookOpen, color: 'from-emerald-500 to-teal-600' },
           ].map(s => (
             <div key={s.label} className="card p-4">
@@ -142,7 +142,7 @@ export default function PortalPage() {
           <div className="flex flex-wrap gap-2 mb-3">
             {([
               { key: 'arsip', label: 'Arsip Sekolah', icon: FolderArchive, count: arsipList.length, color: 'bg-violet-500' },
-              { key: 'guru', label: 'File Guru', icon: GraduationCap, count: guruList.length, color: 'bg-primary-500' },
+              { key: 'guru', label: 'File Guru & Tendik', icon: GraduationCap, count: guruList.length, color: 'bg-primary-500' },
               { key: 'siswa', label: 'File Siswa', icon: BookOpen, count: siswaList.length, color: 'bg-emerald-500' },
             ] as const).map(tab => (
               <button
@@ -171,7 +171,7 @@ export default function PortalPage() {
                 className="input pl-9"
                 placeholder={
                   activeTab === 'arsip' ? 'Cari nama atau kategori file...' :
-                  activeTab === 'guru' ? 'Cari nama guru atau NIK...' :
+                  activeTab === 'guru' ? 'Cari nama guru / tendik atau NIK...' :
                   'Cari nama siswa, NISN, atau kelas...'
                 }
                 value={search}
@@ -236,7 +236,7 @@ export default function PortalPage() {
             {filteredGuru.length === 0 ? (
               <div className="card p-10 text-center text-slate-400">
                 <Search className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                <p>Tidak ada data guru ditemukan</p>
+                <p>Tidak ada data guru & tendik ditemukan</p>
               </div>
             ) : filteredGuru.map(guru => {
               const files = guru.file_guru || []
