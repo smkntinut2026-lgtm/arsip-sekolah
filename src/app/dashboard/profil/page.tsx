@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useApp } from '../layout'
+import { useApp } from '../context'
 import { Save, Upload, School, X, Image as ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
