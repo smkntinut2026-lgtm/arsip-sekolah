@@ -48,10 +48,10 @@ export default function GuruPage() {
 
   async function handleBulkDelete() {
     if (selected.size === 0) return
-    if (!confirm(`Hapus ${selected.size} data guru beserta semua filenya?`)) return
+    if (!confirm(`Hapus ${selected.size} data guru & tendik beserta semua filenya?`)) return
     const ids = Array.from(selected)
     await supabase.from('data_guru').delete().in('id', ids)
-    toast.success(`${ids.length} data guru berhasil dihapus`)
+    toast.success(`${ids.length} data guru & tendik berhasil dihapus`)
     setSelected(new Set())
     fetchData()
   }
@@ -106,7 +106,7 @@ export default function GuruPage() {
     } else {
       const { error } = await supabase.from('data_guru').insert(payload)
       if (error) { toast.error('Gagal menyimpan'); return }
-      toast.success('Guru berhasil ditambahkan')
+      toast.success('Guru / Tendik berhasil ditambahkan')
     }
     setShowAddModal(false)
     setShowEditModal(false)
@@ -115,7 +115,7 @@ export default function GuruPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Hapus data guru ini beserta semua filenya?')) return
+    if (!confirm('Hapus data guru & tendik ini beserta semua filenya?')) return
     await supabase.from('data_guru').delete().eq('id', id)
     toast.success('Data berhasil dihapus')
     fetchData()
@@ -179,8 +179,8 @@ export default function GuruPage() {
       ['Contoh: Ahmad Fauzi, S.Pd', '1234567890123456', 'Jakarta', '1985-05-15', 'S1', 'S.Pd'],
     ])
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Guru')
-    XLSX.writeFile(wb, 'template_import_guru.xlsx')
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Guru & Tendik')
+    XLSX.writeFile(wb, 'template_import_guru_tendik.xlsx')
   }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -228,8 +228,8 @@ export default function GuruPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="page-title">Data Guru</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{guruList.length} guru terdaftar</p>
+          <h1 className="page-title">Data Guru & Tendik</h1>
+          <p className="text-slate-500 text-sm mt-0.5">{guruList.length} guru & tendik terdaftar</p>
         </div>
         {isAdmin && (
           <div className="flex flex-wrap gap-2">
@@ -242,7 +242,7 @@ export default function GuruPage() {
               <Import className="w-4 h-4" /> Import Excel
             </button>
             <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '' }); setShowAddModal(true) }} className="btn-primary text-sm">
-              <Plus className="w-4 h-4" /> Tambah Guru
+              <Plus className="w-4 h-4" /> Tambah Guru & Tendik
             </button>
           </div>
         )}
@@ -292,7 +292,7 @@ export default function GuruPage() {
                     />
                   </th>
                 )}
-                <th>Nama Guru</th>
+                <th>Nama Guru / Tendik</th>
                 <th>NIK</th>
                 <th>Pendidikan</th>
                 <th>File</th>
@@ -314,7 +314,7 @@ export default function GuruPage() {
                   <td colSpan={6} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center gap-2">
                       <Search className="w-8 h-8 text-slate-300" />
-                      <p>Tidak ada data guru</p>
+                      <p>Tidak ada data guru & tendik</p>
                     </div>
                   </td>
                 </tr>
@@ -419,7 +419,7 @@ export default function GuruPage() {
           <div className="modal-content">
             <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
               <h2 className="font-display font-bold text-lg">
-                {showEditModal ? 'Edit Data Guru' : 'Tambah Guru Baru'}
+                {showEditModal ? 'Edit Data Guru & Tendik' : 'Tambah Guru & Tendik Baru'}
               </h2>
               <button onClick={() => { setShowAddModal(false); setShowEditModal(false) }} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
                 <X className="w-4 h-4" />
@@ -429,7 +429,7 @@ export default function GuruPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="label">Nama Lengkap *</label>
-                  <input className="input" value={form.nama_lengkap} onChange={e => setForm({ ...form, nama_lengkap: e.target.value })} placeholder="Nama lengkap guru" />
+                  <input className="input" value={form.nama_lengkap} onChange={e => setForm({ ...form, nama_lengkap: e.target.value })} placeholder="Nama lengkap guru / tendik" />
                 </div>
                 <div>
                   <label className="label">NIK</label>
@@ -471,7 +471,7 @@ export default function GuruPage() {
             <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
               <div>
                 <h2 className="font-display font-bold text-lg">{selectedGuru.nama_lengkap}</h2>
-                <p className="text-white/70 text-sm">{selectedGuru.gelar && `${selectedGuru.gelar} · `}Arsip File Guru</p>
+                <p className="text-white/70 text-sm">{selectedGuru.gelar && `${selectedGuru.gelar} · `}Arsip File Guru & Tendik</p>
               </div>
               <button onClick={() => setShowFileModal(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
                 <X className="w-4 h-4" />
@@ -604,7 +604,7 @@ export default function GuruPage() {
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowImportModal(false) }}>
           <div className="modal-content">
             <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
-              <h2 className="font-display font-bold text-lg">Import Data Guru</h2>
+              <h2 className="font-display font-bold text-lg">Import Data Guru & Tendik</h2>
               <button onClick={() => setShowImportModal(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
