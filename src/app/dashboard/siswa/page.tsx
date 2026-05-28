@@ -37,6 +37,23 @@ export default function SiswaPage() {
     tanggal_lahir: '', kelas: ''
   })
 
+  // Bulk delete
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  function toggleSelect(id: string) {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  async function handleBulkDelete() {
+    if (selected.size === 0) return
+    if (!confirm(`Hapus ${selected.size} data siswa beserta semua filenya?`)) return
+    const ids = Array.from(selected)
+    await supabase.from('data_siswa').delete().in('id', ids)
+    toast.success(`${ids.length} data siswa berhasil dihapus`)
+    setSelected(new Set())
+    fetchData()
+  }
+
   const [uploadJenisId, setUploadJenisId] = useState('')
   const [uploadNamaFile, setUploadNamaFile] = useState('')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -196,6 +213,11 @@ export default function SiswaPage() {
         </div>
         {isAdmin && (
           <div className="flex flex-wrap gap-2">
+            {selected.size > 0 && (
+              <button onClick={handleBulkDelete} className="btn-secondary text-sm text-rose-600 border-rose-200 hover:bg-rose-50">
+                <Trash2 className="w-4 h-4" /> Hapus {selected.size} Terpilih
+              </button>
+            )}
             <button onClick={() => setShowImportModal(true)} className="btn-secondary text-sm">
               <Import className="w-4 h-4" /> Import Excel
             </button>
@@ -238,6 +260,20 @@ export default function SiswaPage() {
           <table className="table">
             <thead>
               <tr>
+                {isAdmin && (
+                  <th style={{width: '40px'}}>
+                    <input type="checkbox"
+                      checked={filtered.length > 0 && filtered.every(s => selected.has(s.id))}
+                      onChange={() => {
+                        const allIds = filtered.map(s => s.id)
+                        const allChecked = allIds.every(id => selected.has(id))
+                        if (allChecked) setSelected(new Set())
+                        else setSelected(new Set(allIds))
+                      }}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th>Nama Siswa</th>
                 <th>NISN</th>
                 <th>Kelas</th>
@@ -261,7 +297,16 @@ export default function SiswaPage() {
               ) : filtered.map(siswa => {
                 const lengkap = isLengkap(siswa)
                 return (
-                  <tr key={siswa.id}>
+                  <tr key={siswa.id} className={selected.has(siswa.id) ? 'bg-blue-50' : ''}>
+                    {isAdmin && (
+                      <td>
+                        <input type="checkbox"
+                          checked={selected.has(siswa.id)}
+                          onChange={() => toggleSelect(siswa.id)}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                      </td>
+                    )}
                     <td>
                       <div className="font-semibold text-slate-800">{siswa.nama_lengkap}</div>
                       {siswa.tempat_lahir && siswa.tanggal_lahir && (
