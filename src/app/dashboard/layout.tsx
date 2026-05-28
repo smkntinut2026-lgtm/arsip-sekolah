@@ -1,29 +1,18 @@
 'use client'
 
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import {
-  LayoutDashboard, Users, GraduationCap, Settings, LogOut,
-  Menu, X, School, ChevronRight, Bell, User, FileText,
+  LayoutDashboard, GraduationCap, LogOut,
+  Menu, X, School, ChevronRight, User, FileText,
   BookOpen, UserCog
 } from 'lucide-react'
 import type { Pengguna, ProfilSekolah } from '@/types'
 import clsx from 'clsx'
-
-interface AppContextType {
-  user: Pengguna | null
-  profil: ProfilSekolah | null
-  refreshProfil: () => void
-}
-
-export const AppContext = createContext<AppContextType>({
-  user: null, profil: null, refreshProfil: () => {}
-})
-
-export const useApp = () => useContext(AppContext)
+import { AppContext } from './context'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -50,14 +39,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   async function init() {
     const { data: { user: authUser } } = await supabase.auth.getUser()
     if (!authUser) { router.push('/login'); return }
-
     const { data: userData } = await supabase
-      .from('pengguna')
-      .select('*')
-      .eq('id', authUser.id)
-      .single()
+      .from('pengguna').select('*').eq('id', authUser.id).single()
     setUser(userData)
-
     await fetchProfil()
     setLoading(false)
   }
@@ -90,21 +74,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <AppContext.Provider value={{ user, profil, refreshProfil: fetchProfil }}>
       <div className="min-h-screen flex">
-        {/* Mobile overlay */}
         {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"
+            onClick={() => setSidebarOpen(false)} />
         )}
-
-        {/* Sidebar */}
         <aside className={clsx(
           'fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 shadow-lg z-40 flex flex-col transition-transform duration-300',
           'lg:translate-x-0 lg:static lg:shadow-none',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}>
-          {/* Logo area */}
           <div className="p-5 border-b border-slate-100">
             <div className="flex items-center gap-3">
               {profil?.logo_url ? (
@@ -124,20 +102,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             </div>
           </div>
-
-          {/* Nav */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {visibleNav.map(item => {
               const Icon = item.icon
-              const active = pathname === item.href || 
+              const active = pathname === item.href ||
                 (item.href !== '/dashboard' && pathname.startsWith(item.href))
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
+                <Link key={item.href} href={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={clsx('sidebar-link', active && 'active')}
-                >
+                  className={clsx('sidebar-link', active && 'active')}>
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span className="text-sm">{item.label}</span>
                   {active && <ChevronRight className="w-4 h-4 ml-auto" />}
@@ -145,8 +118,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )
             })}
           </nav>
-
-          {/* User */}
           <div className="p-4 border-t border-slate-100">
             <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-50 mb-2">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center flex-shrink-0">
@@ -157,27 +128,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <p className="text-xs text-slate-400 capitalize">{user?.role}</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="btn-ghost w-full text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-            >
+            <button onClick={handleLogout}
+              className="btn-ghost w-full text-rose-500 hover:bg-rose-50 hover:text-rose-600">
               <LogOut className="w-4 h-4" />
               <span className="text-sm">Keluar</span>
             </button>
           </div>
         </aside>
-
-        {/* Main */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Topbar */}
           <header className="h-16 bg-white border-b border-slate-100 flex items-center px-4 lg:px-6 gap-4 sticky top-0 z-20 shadow-sm">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="btn-icon lg:hidden"
-            >
+            <button onClick={() => setSidebarOpen(true)} className="btn-icon lg:hidden">
               <Menu className="w-5 h-5" />
             </button>
-
             <div className="flex-1">
               <div className="hidden lg:block">
                 <nav className="flex items-center gap-1.5 text-sm text-slate-500">
@@ -199,17 +161,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </nav>
               </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow" />
-                <span className="text-xs text-slate-600 font-medium">{user?.nama_lengkap}</span>
-                <span className="badge-blue text-xs">{user?.role}</span>
-              </div>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-slow" />
+              <span className="text-xs text-slate-600 font-medium">{user?.nama_lengkap}</span>
+              <span className="badge-blue text-xs">{user?.role}</span>
             </div>
           </header>
-
-          {/* Content */}
           <main className="flex-1 p-4 lg:p-6 animate-fade-in">
             {children}
           </main>
