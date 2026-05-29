@@ -82,8 +82,9 @@ export default function PortalPage() {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [visitCount, setVisitCount] = useState<number | null>(null)
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => { fetchAll(); trackVisit() }, [])
 
   async function fetchAll() {
     setLoading(true)
@@ -100,6 +101,12 @@ export default function PortalPage() {
     setArsipList(arsipRes.data || [])
     setJenisFileList(jenisRes.data || [])
     setLoading(false)
+  }
+
+  async function trackVisit() {
+    await supabase.rpc("increment_visit")
+    const { data } = await supabase.from("visit_counter").select("count").eq("id", 1).single()
+    if (data) setVisitCount(Number(data.count))
   }
 
   async function refreshGuru(guruId: string) {
@@ -494,8 +501,31 @@ export default function PortalPage() {
         )}
       </main>
 
-      <footer className="max-w-5xl mx-auto px-4 py-6 mt-4 text-center text-xs text-slate-400 border-t border-slate-100">
-        {profil?.nama_sekolah} · Portal Dokumen Publik
+      <footer className="max-w-5xl mx-auto px-4 py-8 mt-4 border-t border-slate-100">
+        {/* Visit Counter */}
+        <div className="flex flex-col items-center gap-3 mb-5">
+          <div className="flex items-center gap-3 bg-gradient-to-r from-primary-50 via-violet-50 to-blue-50 border border-primary-100 rounded-2xl px-6 py-4">
+            <div className="flex gap-1 items-end">
+              {visitCount !== null ? (
+                String(visitCount).split('').map((digit, i) => (
+                  <span key={i} className="inline-flex items-center justify-center w-7 h-9 bg-white border border-primary-200 rounded-lg text-lg font-display font-bold text-primary-700 shadow-sm">
+                    {digit}
+                  </span>
+                ))
+              ) : (
+                <span className="inline-flex items-center justify-center w-7 h-9 bg-white border border-primary-100 rounded-lg text-slate-200 animate-pulse text-lg">-</span>
+              )}
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-slate-700">Total Kunjungan</p>
+              <p className="text-xs text-slate-400">sejak fitur ini ditambahkan</p>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 text-center">
+            ✨ Terima kasih telah mengunjungi portal kami!
+          </p>
+        </div>
+        <p className="text-center text-xs text-slate-400">{profil?.nama_sekolah} · Portal Dokumen Publik</p>
       </footer>
 
       {/* Modal Preview File */}
