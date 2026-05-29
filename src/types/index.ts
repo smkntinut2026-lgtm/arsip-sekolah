@@ -34,7 +34,8 @@ export interface DataGuru {
   tanggal_lahir: string | null
   pendidikan_terakhir: string
   gelar: string
-  no_telepon: string  // ✅ Kolom baru
+  no_telepon: string
+  jabatan: 'Guru' | 'Tendik'  // ✅ v3: kolom jabatan
   created_at: string
   updated_at: string
   file_guru?: FileGuru[]
