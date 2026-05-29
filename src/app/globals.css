@@ -161,11 +161,11 @@
   }
 
   .modal-overlay {
-    @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in;
+    @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-8 animate-fade-in overflow-y-auto;
   }
 
   .modal-content {
-    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up;
+    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up my-auto;
   }
 
   .gradient-header {
