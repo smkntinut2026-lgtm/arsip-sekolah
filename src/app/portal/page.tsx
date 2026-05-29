@@ -94,6 +94,9 @@ export default function PortalPage() {
     g.nik?.includes(search)
   )
 
+  const guruOnly = filteredGuru.filter(g => g.jabatan !== 'Tendik')
+  const tendikOnly = filteredGuru.filter(g => g.jabatan === 'Tendik')
+
   const filteredSiswa = siswaList
     .filter(s => filterKelas === 'semua' || s.kelas === filterKelas)
     .filter(s =>
@@ -145,10 +148,11 @@ export default function PortalPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             { label: 'Arsip Sekolah', value: arsipList.length, icon: FolderArchive, color: 'from-violet-500 to-purple-600' },
-            { label: 'Guru & Tendik', value: guruList.length, sub: `${totalGuruFiles} file`, icon: GraduationCap, color: 'from-blue-500 to-primary-600' },
+            { label: 'Guru', value: guruList.filter(g => g.jabatan !== 'Tendik').length, sub: `${guruList.filter(g=>g.jabatan!=='Tendik').reduce((s,g)=>s+(g.file_guru?.length||0),0)} file`, icon: GraduationCap, color: 'from-blue-500 to-primary-600' },
+            { label: 'Tendik', value: guruList.filter(g => g.jabatan === 'Tendik').length, sub: `${guruList.filter(g=>g.jabatan==='Tendik').reduce((s,g)=>s+(g.file_guru?.length||0),0)} file`, icon: GraduationCap, color: 'from-amber-500 to-orange-500' },
             { label: 'Siswa', value: siswaList.length, sub: `${totalSiswaFiles} file`, icon: BookOpen, color: 'from-emerald-500 to-teal-600' },
           ].map(s => (
             <div key={s.label} className="card p-4">
@@ -261,46 +265,52 @@ export default function PortalPage() {
             ))}
           </div>
         ) : activeTab === 'guru' ? (
-          <div className="space-y-2">
+          <div>
             {filteredGuru.length === 0 ? (
               <div className="card p-10 text-center text-slate-400">
                 <Search className="w-8 h-8 mx-auto mb-2 text-slate-200" />
                 <p>Tidak ada data guru & tendik ditemukan</p>
               </div>
-            ) : filteredGuru.map(guru => {
-              const files = guru.file_guru || []
-              const expanded = expandedIds.has(guru.id)
-              return (
-                <div key={guru.id} className="card overflow-hidden">
-                  <button className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors" onClick={() => toggleExpand(guru.id)}>
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-primary-100 flex items-center justify-center flex-shrink-0">
-                      <GraduationCap className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-800 text-sm">{guru.nama_lengkap}</p>
-                      <p className="text-xs text-slate-400">{guru.gelar && `${guru.gelar} · `}{guru.nik || 'NIK tidak tersedia'}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${files.length > 0 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-400'}`}>{files.length} file</span>
-                      {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                    </div>
-                  </button>
-                  {expanded && (
-                    <div className="border-t border-slate-100 px-4 pb-4 pt-3">
-                      {files.length === 0 ? (
-                        <p className="text-sm text-slate-400 text-center py-3">Belum ada file diupload</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {files.map((file: FileGuru) => (
-                            <FileRow key={file.id} nama={file.nama_file} fileUrl={file.file_url} fileType={file.file_type} fileSize={file.file_size} createdAt={file.created_at} jenisNama={file.jenis_file?.nama} onPreview={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} onDownload={() => handleDownload(file.file_url, file.nama_file)} />
-                          ))}
-                        </div>
-                      )}
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Kolom Guru */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="w-2 h-5 rounded-full bg-blue-500" />
+                    <h2 className="font-display font-bold text-slate-700">Guru</h2>
+                    <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">{guruOnly.length}</span>
+                  </div>
+                  {guruOnly.length === 0 ? (
+                    <div className="card p-6 text-center text-slate-400 text-sm">Tidak ada data guru</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {guruOnly.map(guru => (
+                        <GuruCard key={guru.id} guru={guru} expandedIds={expandedIds} onToggle={toggleExpand} onPreview={setPreviewFile} onDownload={handleDownload} />
+                      ))}
                     </div>
                   )}
                 </div>
-              )
-            })}
+
+                {/* Kolom Tendik */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3 px-1">
+                    <div className="w-2 h-5 rounded-full bg-amber-500" />
+                    <h2 className="font-display font-bold text-slate-700">Tendik</h2>
+                    <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">{tendikOnly.length}</span>
+                  </div>
+                  {tendikOnly.length === 0 ? (
+                    <div className="card p-6 text-center text-slate-400 text-sm">Tidak ada data tendik</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {tendikOnly.map(guru => (
+                        <GuruCard key={guru.id} guru={guru} expandedIds={expandedIds} onToggle={toggleExpand} onPreview={setPreviewFile} onDownload={handleDownload} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           </div>
         ) : (
           <div className="space-y-2">
@@ -375,6 +385,61 @@ export default function PortalPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GuruCard({ guru, expandedIds, onToggle, onPreview, onDownload }: {
+  guru: DataGuru
+  expandedIds: Set<string>
+  onToggle: (id: string) => void
+  onPreview: (f: { nama: string; url: string; type: string }) => void
+  onDownload: (url: string, nama: string) => void
+}) {
+  const files = guru.file_guru || []
+  const expanded = expandedIds.has(guru.id)
+  const isTendik = guru.jabatan === 'Tendik'
+
+  return (
+    <div className="card overflow-hidden">
+      <button className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors" onClick={() => onToggle(guru.id)}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isTendik ? 'bg-gradient-to-br from-amber-100 to-orange-100' : 'bg-gradient-to-br from-blue-100 to-primary-100'}`}>
+          <GraduationCap className={`w-5 h-5 ${isTendik ? 'text-amber-600' : 'text-primary-600'}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-slate-800 text-sm">{guru.nama_lengkap}</p>
+          <p className="text-xs text-slate-400">{guru.gelar && `${guru.gelar} · `}{guru.nik || 'NIK tidak tersedia'}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${files.length > 0 ? (isTendik ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700') : 'bg-slate-100 text-slate-400'}`}>
+            {files.length} file
+          </span>
+          {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+        </div>
+      </button>
+      {expanded && (
+        <div className="border-t border-slate-100 px-4 pb-4 pt-3">
+          {files.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-3">Belum ada file diupload</p>
+          ) : (
+            <div className="space-y-2">
+              {files.map((file: FileGuru) => (
+                <FileRow
+                  key={file.id}
+                  nama={file.nama_file}
+                  fileUrl={file.file_url}
+                  fileType={file.file_type}
+                  fileSize={file.file_size}
+                  createdAt={file.created_at}
+                  jenisNama={file.jenis_file?.nama}
+                  onPreview={() => onPreview({ nama: file.nama_file, url: file.file_url, type: file.file_type })}
+                  onDownload={() => onDownload(file.file_url, file.nama_file)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
