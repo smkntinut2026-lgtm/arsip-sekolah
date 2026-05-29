@@ -414,7 +414,7 @@ export default function PortalPage() {
                           onPreview={setPreviewFile}
                           onDownload={handleDownload}
                           onClickUpload={handleClickUpload}
-                          checkingStorageFor={checkingStorage ? uploadTargetGuru?.id : null}
+                          checkingStorageFor={checkingStorage ? (uploadTargetGuru?.id ?? null) : null}
                         />
                       ))}
                     </div>
@@ -440,7 +440,7 @@ export default function PortalPage() {
                           onPreview={setPreviewFile}
                           onDownload={handleDownload}
                           onClickUpload={handleClickUpload}
-                          checkingStorageFor={checkingStorage ? uploadTargetGuru?.id : null}
+                          checkingStorageFor={checkingStorage ? (uploadTargetGuru?.id ?? null) : null}
                         />
                       ))}
                     </div>
@@ -537,7 +537,7 @@ export default function PortalPage() {
               <div>
                 <h2 className="font-display font-bold text-slate-800 text-lg">Sesi Upload Berakhir</h2>
                 <p className="text-slate-500 text-sm mt-2">
-                  Demi keamanan, sesi upload Anda telah berakhir. Silakan coba lagi besok ya, terimakasih😊.
+                  Demi keamanan, sesi upload Anda telah berakhir. Silakan coba lagi besok.
                 </p>
               </div>
               <div className="flex items-center justify-center gap-2 text-xs text-slate-400 bg-slate-50 rounded-xl p-3">
