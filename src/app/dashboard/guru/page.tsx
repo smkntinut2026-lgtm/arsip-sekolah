@@ -527,7 +527,7 @@ export default function GuruPage() {
       {/* File Modal */}
       {showFileModal && selectedGuru && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowFileModal(false) }}>
-          <div className="modal-content max-w-2xl">
+          <div className="modal-content max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
               <div>
                 <h2 className="font-display font-bold text-lg">{selectedGuru.nama_lengkap}</h2>
