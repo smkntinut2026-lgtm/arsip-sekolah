@@ -518,7 +518,7 @@ export default function PortalPage() {
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-slate-700">Total Kunjungan</p>
-              <p className="text-xs text-slate-400">sejak fitur ini ditambahkan</p>
+              <p className="text-xs text-slate-400">di Portal ini</p>
             </div>
           </div>
           <p className="text-xs text-slate-400 text-center">
