@@ -165,7 +165,7 @@ export default function DashboardPage() {
               <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold">Dokumen Guru & Tendik Belum Lengkap</p>
-                <p className="text-amber-700 mt-0.5"><strong>{stats.guruBelumLengkap} guru</strong> belum melengkapi file wajib.</p>
+                <p className="text-amber-700 mt-0.5"><strong>{stats.guruBelumLengkap} Guru & Tendik</strong> belum melengkapi file wajib.</p>
               </div>
             </Link>
           )}
