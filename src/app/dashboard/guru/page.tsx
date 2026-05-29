@@ -25,6 +25,7 @@ export default function GuruPage() {
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'nama' | 'created_at'>('nama')
   const [filterStatus, setFilterStatus] = useState<'semua' | 'lengkap' | 'belum'>('semua')
+  const [filterJabatan, setFilterJabatan] = useState<'semua' | 'Guru' | 'Tendik'>('semua')
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false)
@@ -36,7 +37,7 @@ export default function GuruPage() {
   // Form
   const [form, setForm] = useState({
     nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '',
-    pendidikan_terakhir: '', gelar: '', no_telepon: ''
+    pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru'
   })
 
   // Bulk delete
@@ -88,6 +89,7 @@ export default function GuruPage() {
   const filtered = guruList
     .filter(g => g.nama_lengkap.toLowerCase().includes(search.toLowerCase()) ||
       g.nik.includes(search))
+    .filter(g => filterJabatan === 'semua' ? true : g.jabatan === filterJabatan)
     .filter(g => filterStatus === 'semua' ? true :
       filterStatus === 'lengkap' ? isLengkap(g) : !isLengkap(g))
     .sort((a, b) => {
@@ -110,7 +112,7 @@ export default function GuruPage() {
     }
     setShowAddModal(false)
     setShowEditModal(false)
-    setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '' })
+    setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru' })
     fetchData()
   }
 
@@ -194,12 +196,13 @@ export default function GuruPage() {
 
   function downloadTemplate() {
     const ws = XLSX.utils.aoa_to_sheet([
-      ['Nama Lengkap', 'NIK', 'Tempat Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Pendidikan Terakhir', 'Gelar'],
-      ['Contoh: Ahmad Fauzi, S.Pd', '1234567890123456', 'Jakarta', '1985-05-15', 'S1', 'S.Pd'],
+      ['Nama Lengkap', 'NIK', 'Jabatan (Guru/Tendik)', 'Tempat Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Pendidikan Terakhir', 'Gelar'],
+      ['Contoh: Ahmad Fauzi, S.Pd', '1234567890123456', 'Guru', 'Jakarta', '1985-05-15', 'S1', 'S.Pd'],
+      ['Contoh: Budi Santoso', '6543210987654321', 'Tendik', 'Surabaya', '1990-03-20', 'S1', ''],
     ])
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Guru')
-    XLSX.writeFile(wb, 'template_import_guru.xlsx')
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Guru & Tendik')
+    XLSX.writeFile(wb, 'template_import_guru_tendik.xlsx')
   }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -215,13 +218,16 @@ export default function GuruPage() {
 
       let imported = 0, skipped = 0
       for (const row of dataRows) {
+        const jabatanRaw = row[2]?.toString().trim() || 'Guru'
+        const jabatan = jabatanRaw.toLowerCase() === 'tendik' ? 'Tendik' : 'Guru'
         const entry: any = {
           nama_lengkap: row[0]?.toString().trim() || '',
           nik: row[1]?.toString().trim() || '',
-          tempat_lahir: row[2]?.toString().trim() || '',
-          tanggal_lahir: row[3] || null,
-          pendidikan_terakhir: row[4]?.toString().trim() || '',
-          gelar: row[5]?.toString().trim() || '',
+          jabatan,
+          tempat_lahir: row[3]?.toString().trim() || '',
+          tanggal_lahir: row[4] || null,
+          pendidikan_terakhir: row[5]?.toString().trim() || '',
+          gelar: row[6]?.toString().trim() || '',
         }
         if (!entry.nama_lengkap) { skipped++; continue }
         const { error } = await supabase.from('data_guru').insert(entry)
@@ -247,8 +253,10 @@ export default function GuruPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="page-title">Data Guru</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{guruList.length} guru terdaftar</p>
+          <h1 className="page-title">Data Guru & Tendik</h1>
+          <p className="text-slate-500 text-sm mt-0.5">
+            {guruList.filter(g => g.jabatan === 'Guru').length} Guru · {guruList.filter(g => g.jabatan === 'Tendik').length} Tendik
+          </p>
         </div>
         {isAdmin && (
           <div className="flex flex-wrap gap-2">
@@ -260,8 +268,8 @@ export default function GuruPage() {
             <button onClick={() => setShowImportModal(true)} className="btn-secondary text-sm">
               <Import className="w-4 h-4" /> Import Excel
             </button>
-            <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '' }); setShowAddModal(true) }} className="btn-primary text-sm">
-              <Plus className="w-4 h-4" /> Tambah Guru
+            <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru' }); setShowAddModal(true) }} className="btn-primary text-sm">
+              <Plus className="w-4 h-4" /> Tambah Pegawai
             </button>
           </div>
         )}
@@ -276,6 +284,12 @@ export default function GuruPage() {
               onChange={e => setSearch(e.target.value)} />
           </div>
           <div className="flex gap-2">
+            <select className="input w-auto" value={filterJabatan}
+              onChange={e => setFilterJabatan(e.target.value as any)}>
+              <option value="semua">Semua Jabatan</option>
+              <option value="Guru">Guru</option>
+              <option value="Tendik">Tendik</option>
+            </select>
             <select className="input w-auto" value={filterStatus}
               onChange={e => setFilterStatus(e.target.value as any)}>
               <option value="semua">Semua Status</option>
@@ -311,7 +325,7 @@ export default function GuruPage() {
                     />
                   </th>
                 )}
-                <th>Nama Guru</th>
+                <th>Nama Pegawai</th>
                 <th>NIK</th>
                 <th>Pendidikan</th>
                 <th>File</th>
@@ -352,7 +366,14 @@ export default function GuruPage() {
                       </td>
                     )}
                     <td>
-                      <div className="font-semibold text-slate-800">{guru.nama_lengkap}</div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <div className="font-semibold text-slate-800">{guru.nama_lengkap}</div>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                          guru.jabatan === 'Tendik'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>{guru.jabatan}</span>
+                      </div>
                       {guru.gelar && <div className="text-xs text-slate-400 mb-1">{guru.gelar}</div>}
                       {jenisFileList.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
@@ -417,7 +438,8 @@ export default function GuruPage() {
                                 setForm({
                                   nama_lengkap: guru.nama_lengkap, nik: guru.nik,
                                   tempat_lahir: guru.tempat_lahir, tanggal_lahir: guru.tanggal_lahir || '',
-                                  pendidikan_terakhir: guru.pendidikan_terakhir, gelar: guru.gelar, no_telepon: guru.no_telepon || ''
+                                  pendidikan_terakhir: guru.pendidikan_terakhir, gelar: guru.gelar,
+                                  no_telepon: guru.no_telepon || '', jabatan: guru.jabatan || 'Guru'
                                 })
                                 setShowEditModal(true)
                               }}
@@ -446,7 +468,7 @@ export default function GuruPage() {
           <div className="modal-content">
             <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
               <h2 className="font-display font-bold text-lg">
-                {showEditModal ? 'Edit Data Guru' : 'Tambah Guru Baru'}
+                {showEditModal ? 'Edit Data Pegawai' : 'Tambah Pegawai Baru'}
               </h2>
               <button onClick={() => { setShowAddModal(false); setShowEditModal(false) }} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
                 <X className="w-4 h-4" />
@@ -456,7 +478,14 @@ export default function GuruPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="label">Nama Lengkap *</label>
-                  <input className="input" value={form.nama_lengkap} onChange={e => setForm({ ...form, nama_lengkap: e.target.value })} placeholder="Nama lengkap guru" />
+                  <input className="input" value={form.nama_lengkap} onChange={e => setForm({ ...form, nama_lengkap: e.target.value })} placeholder="Nama lengkap pegawai" />
+                </div>
+                <div>
+                  <label className="label">Jabatan *</label>
+                  <select className="input" value={form.jabatan} onChange={e => setForm({ ...form, jabatan: e.target.value })}>
+                    <option value="Guru">Guru</option>
+                    <option value="Tendik">Tendik (Tenaga Kependidikan)</option>
+                  </select>
                 </div>
                 <div>
                   <label className="label">NIK</label>
@@ -644,7 +673,7 @@ export default function GuruPage() {
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowImportModal(false) }}>
           <div className="modal-content">
             <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
-              <h2 className="font-display font-bold text-lg">Import Data Guru</h2>
+              <h2 className="font-display font-bold text-lg">Import Data Guru & Tendik</h2>
               <button onClick={() => setShowImportModal(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
@@ -654,7 +683,7 @@ export default function GuruPage() {
                 <p className="font-semibold mb-1">Petunjuk Import:</p>
                 <ul className="space-y-1 text-blue-700 list-disc list-inside">
                   <li>Unduh template Excel terlebih dahulu</li>
-                  <li>Isi data sesuai kolom yang tersedia</li>
+                  <li>Isi kolom <strong>Jabatan</strong> dengan <strong>Guru</strong> atau <strong>Tendik</strong></li>
                   <li>Field yang kosong akan dilewati, dapat dilengkapi nanti via tombol Edit</li>
                   <li>Kolom Nama Lengkap wajib diisi</li>
                 </ul>
