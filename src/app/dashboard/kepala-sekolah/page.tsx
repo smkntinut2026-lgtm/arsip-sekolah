@@ -539,7 +539,7 @@ export default function KepalaSekolahPage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="page-title">Data Kepala Sekolah</h1>
           <p className="text-slate-500 text-sm mt-0.5">
@@ -560,10 +560,10 @@ export default function KepalaSekolahPage() {
         </p>
         {aktif ? (
           <div className="card p-6 bg-gradient-to-br from-primary-50 to-violet-50 border-primary-100">
-            <div className="flex items-start gap-5">
-              <div className="flex-shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
+              <div className="flex sm:flex-shrink-0 items-center gap-4 sm:block">
                 {aktif.foto_url ? (
-                  <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white shadow-card">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-white shadow-card">
                     <Image src={aktif.foto_url} alt={aktif.nama_lengkap} width={80} height={80} className="w-full h-full object-cover" />
                   </div>
                 ) : (
@@ -598,7 +598,7 @@ export default function KepalaSekolahPage() {
                 )}
               </div>
               {isAdmin && (
-                <div className="flex flex-col gap-2 flex-shrink-0">
+                <div className="flex sm:flex-col gap-2 flex-shrink-0">
                   <button onClick={() => openEdit(aktif)} className="btn-secondary text-xs px-3 py-1.5">
                     <Edit3 className="w-3.5 h-3.5" /> Edit
                   </button>
@@ -726,7 +726,7 @@ export default function KepalaSekolahPage() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 space-y-4 max-h-[65vh] overflow-y-auto">
               <div>
                 <label className="label">Foto</label>
                 <div className="flex items-center gap-4">
@@ -768,7 +768,7 @@ export default function KepalaSekolahPage() {
                 <label className="label">NIP</label>
                 <input className="input" value={form.nip} onChange={e => setForm({ ...form, nip: e.target.value })} placeholder="Nomor Induk Pegawai" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Tempat Lahir</label>
                   <input className="input" value={form.tempat_lahir} onChange={e => setForm({ ...form, tempat_lahir: e.target.value })} placeholder="Kota" />
@@ -785,7 +785,7 @@ export default function KepalaSekolahPage() {
                   <option>S1</option><option>S2</option><option>S3</option><option>D4</option><option>D3</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Periode Mulai</label>
                   <input type="date" className="input" value={form.periode_mulai} onChange={e => setForm({ ...form, periode_mulai: e.target.value })} />
