@@ -15,6 +15,7 @@ export default function PortalLinkPage() {
   const [copied, setCopied] = useState(false)
   const [portalUrl, setPortalUrl] = useState('')
   const [guruCount, setGuruCount] = useState(0)
+  const [tendikCount, setTendikCount] = useState(0)
   const [siswaCount, setSiswaCount] = useState(0)
   const [guruFileCount, setGuruFileCount] = useState(0)
   const [siswaFileCount, setSiswaFileCount] = useState(0)
@@ -25,13 +26,15 @@ export default function PortalLinkPage() {
   }, [])
 
   async function fetchStats() {
-    const [guruRes, siswaRes, fgRes, fsRes] = await Promise.all([
-      supabase.from('data_guru').select('id', { count: 'exact', head: true }),
+    const [guruRes, tendikRes, siswaRes, fgRes, fsRes] = await Promise.all([
+      supabase.from('data_guru').select('id', { count: 'exact', head: true }).eq('jabatan', 'Guru'),
+      supabase.from('data_guru').select('id', { count: 'exact', head: true }).eq('jabatan', 'Tendik'),
       supabase.from('data_siswa').select('id', { count: 'exact', head: true }),
       supabase.from('file_guru').select('id', { count: 'exact', head: true }),
       supabase.from('file_siswa').select('id', { count: 'exact', head: true }),
     ])
     setGuruCount(guruRes.count || 0)
+    setTendikCount(tendikRes.count || 0)
     setSiswaCount(siswaRes.count || 0)
     setGuruFileCount(fgRes.count || 0)
     setSiswaFileCount(fsRes.count || 0)
@@ -108,14 +111,23 @@ export default function PortalLinkPage() {
       </div>
 
       {/* Stats preview */}
-      <div className="grid grid-cols-2 gap-3 mb-5">
+      <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
             <GraduationCap className="w-5 h-5 text-blue-600" />
           </div>
           <div>
             <p className="text-xl font-display font-bold text-slate-800">{guruCount}</p>
-            <p className="text-xs text-slate-400">Guru & Tendik · {guruFileCount} file</p>
+            <p className="text-xs text-slate-400">Guru · {guruFileCount} file</p>
+          </div>
+        </div>
+        <div className="card p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <GraduationCap className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-xl font-display font-bold text-slate-800">{tendikCount}</p>
+            <p className="text-xs text-slate-400">Tendik</p>
           </div>
         </div>
         <div className="card p-4 flex items-center gap-3">
