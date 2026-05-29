@@ -15,7 +15,6 @@ import type { DataGuru, DataSiswa, FileGuru, FileSiswa, ArsipSekolah, JenisFile 
 
 // ─── Konstanta sesi upload ────────────────────────────────────────────────────
 const SESSION_KEY = 'portal_upload_session'
-const SESSION_DURATION_MS = 60 * 60 * 1000 // 1 jam
 const STORAGE_WARNING_MB = 50 // peringatan jika sisa < 50MB
 const STORAGE_LIMIT_MB = 1024 // 1 GB batas Supabase free
 
@@ -40,9 +39,9 @@ function getUploadSession(): { active: boolean; expired: boolean } {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
     if (!raw) return { active: false, expired: false }
-    const { startedAt } = JSON.parse(raw)
-    const elapsed = Date.now() - startedAt
-    if (elapsed > SESSION_DURATION_MS) return { active: false, expired: true }
+    const { startedAt, date } = JSON.parse(raw)
+    const today = new Date().toDateString()
+    if (date !== today) return { active: false, expired: true }
     return { active: true, expired: false }
   } catch {
     return { active: false, expired: false }
@@ -50,7 +49,10 @@ function getUploadSession(): { active: boolean; expired: boolean } {
 }
 
 function startUploadSession() {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ startedAt: Date.now() }))
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    startedAt: Date.now(),
+    date: new Date().toDateString()
+  }))
 }
 
 type ActiveTab = 'arsip' | 'guru' | 'siswa'
@@ -714,7 +716,7 @@ function GuruCard({ guru, expandedId, onToggle, onPreview, onDownload, onClickUp
   return (
     <div className="card overflow-hidden">
       <button
-        className={`w-full flex items-center gap-3 p-4 text-left transition-colors ${isTendik ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600' : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'}`}
+        className={`w-full flex items-center gap-3 p-4 text-left transition-colors ${isTendik ? 'bg-gradient-to-r from-orange-400 to-amber-400 hover:from-orange-500 hover:to-amber-500' : 'bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500'}`}
         onClick={() => onToggle(guru.id)}
       >
         <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
@@ -734,6 +736,7 @@ function GuruCard({ guru, expandedId, onToggle, onPreview, onDownload, onClickUp
 
       {expanded && (
         <div className={`border-t px-4 pb-4 pt-3 space-y-3 ${isTendik ? 'border-amber-200 bg-orange-50' : 'border-blue-200 bg-blue-50'}`}>
+          <div className="ml-4 space-y-3">
           {/* Pesan ajakan upload */}
           <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
             <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
@@ -775,6 +778,7 @@ function GuruCard({ guru, expandedId, onToggle, onPreview, onDownload, onClickUp
               ))}
             </div>
           )}
+          </div>
         </div>
       )}
     </div>
