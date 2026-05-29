@@ -1,15 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Search, Download, Eye, FileText, GraduationCap, BookOpen,
-  School, FolderArchive, ChevronDown, ChevronRight, X, FolderOpen
+  School, FolderArchive, ChevronDown, ChevronRight, X, FolderOpen,
+  Upload, CheckCircle2, AlertCircle, Loader2, Clock, ShieldAlert
 } from 'lucide-react'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import { id as localeId } from 'date-fns/locale'
-import type { DataGuru, DataSiswa, FileGuru, FileSiswa, ArsipSekolah } from '@/types'
+import toast from 'react-hot-toast'
+import type { DataGuru, DataSiswa, FileGuru, FileSiswa, ArsipSekolah, JenisFile } from '@/types'
+
+// ─── Konstanta sesi upload ────────────────────────────────────────────────────
+const SESSION_KEY = 'portal_upload_session'
+const SESSION_DURATION_MS = 60 * 60 * 1000 // 1 jam
+const STORAGE_WARNING_MB = 50 // peringatan jika sisa < 50MB
+const STORAGE_LIMIT_MB = 1024 // 1 GB batas Supabase free
 
 function formatBytes(bytes: number) {
   if (bytes === 0) return '0 B'
@@ -27,6 +35,24 @@ function getFileIcon(fileType: string) {
   return '📁'
 }
 
+// ─── Cek & kelola sesi upload ─────────────────────────────────────────────────
+function getUploadSession(): { active: boolean; expired: boolean } {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return { active: false, expired: false }
+    const { startedAt } = JSON.parse(raw)
+    const elapsed = Date.now() - startedAt
+    if (elapsed > SESSION_DURATION_MS) return { active: false, expired: true }
+    return { active: true, expired: false }
+  } catch {
+    return { active: false, expired: false }
+  }
+}
+
+function startUploadSession() {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ startedAt: Date.now() }))
+}
+
 type ActiveTab = 'arsip' | 'guru' | 'siswa'
 
 export default function PortalPage() {
@@ -36,6 +62,7 @@ export default function PortalPage() {
   const [guruList, setGuruList] = useState<DataGuru[]>([])
   const [siswaList, setSiswaList] = useState<DataSiswa[]>([])
   const [arsipList, setArsipList] = useState<ArsipSekolah[]>([])
+  const [jenisFileList, setJenisFileList] = useState<JenisFile[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<ActiveTab>('arsip')
   const [search, setSearch] = useState('')
@@ -44,23 +71,45 @@ export default function PortalPage() {
   const [filterKelas, setFilterKelas] = useState('semua')
   const [previewFile, setPreviewFile] = useState<{ nama: string; url: string; type: string } | null>(null)
 
-  useEffect(() => {
-    fetchAll()
-  }, [])
+  // Upload states
+  const [uploadTargetGuru, setUploadTargetGuru] = useState<DataGuru | null>(null)
+  const [checkingStorage, setCheckingStorage] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
+  const [uploadNama, setUploadNama] = useState('')
+  const [uploadJenisId, setUploadJenisId] = useState('')
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { fetchAll() }, [])
 
   async function fetchAll() {
     setLoading(true)
-    const [profilRes, guruRes, siswaRes, arsipRes] = await Promise.all([
+    const [profilRes, guruRes, siswaRes, arsipRes, jenisRes] = await Promise.all([
       supabase.from('profil_sekolah').select('*').limit(1).single(),
       supabase.from('data_guru').select('*, file_guru(*, jenis_file(*))').order('nama_lengkap'),
       supabase.from('data_siswa').select('*, file_siswa(*, jenis_file(*))').order('nama_lengkap'),
       supabase.from('arsip_sekolah').select('*').order('kategori').order('created_at', { ascending: false }),
+      supabase.from('jenis_file').select('*').eq('kategori', 'guru').order('urutan'),
     ])
     setProfil(profilRes.data)
     setGuruList(guruRes.data || [])
     setSiswaList(siswaRes.data || [])
     setArsipList(arsipRes.data || [])
+    setJenisFileList(jenisRes.data || [])
     setLoading(false)
+  }
+
+  async function refreshGuru(guruId: string) {
+    const { data } = await supabase
+      .from('data_guru').select('*, file_guru(*, jenis_file(*))')
+      .eq('id', guruId).single()
+    if (data) {
+      setGuruList(prev => prev.map(g => g.id === guruId ? data : g))
+      setUploadTargetGuru(data)
+    }
   }
 
   function toggleExpand(id: string) {
@@ -74,26 +123,107 @@ export default function PortalPage() {
   async function handleDownload(fileUrl: string, namaFile: string) {
     try {
       const res = await fetch(fileUrl)
-      if (!res.ok) throw new Error('Gagal mengambil file')
+      if (!res.ok) throw new Error()
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
-      a.download = namaFile
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
+      a.href = url; a.download = namaFile
+      document.body.appendChild(a); a.click(); a.remove()
       window.URL.revokeObjectURL(url)
     } catch {
       window.open(fileUrl, '_blank')
     }
   }
 
+  // ─── Klik tombol upload dari kartu guru ──────────────────────────────────────
+  async function handleClickUpload(guru: DataGuru) {
+    // Cek sesi
+    const session = getUploadSession()
+    if (session.expired) {
+      setSessionExpired(true)
+      return
+    }
+
+    setUploadTargetGuru(guru)
+    setCheckingStorage(true)
+
+    // Animasi cek storage (minimal 1.2 detik agar terasa)
+    const [storageRes] = await Promise.all([
+      supabase.from('file_guru').select('file_size'),
+      new Promise(r => setTimeout(r, 1200)),
+    ])
+
+    const usedBytes = ((storageRes.data || []) as any[]).reduce((s: number, f: any) => s + (f.file_size || 0), 0)
+    const usedMB = usedBytes / (1024 * 1024)
+    const sisaMB = STORAGE_LIMIT_MB - usedMB
+
+    setCheckingStorage(false)
+
+    if (sisaMB < 1) {
+      toast.error('Ruang penyimpanan penuh. Hubungi admin.')
+      return
+    }
+    if (sisaMB < STORAGE_WARNING_MB) {
+      toast('Peringatan: ruang penyimpanan hampir penuh!', { icon: '⚠️' })
+    }
+
+    // Mulai sesi jika belum ada
+    if (!session.active) startUploadSession()
+
+    setUploadNama('')
+    setUploadJenisId('')
+    setUploadFile(null)
+    setShowUploadModal(true)
+  }
+
+  async function handleUpload() {
+    if (!uploadFile || !uploadNama.trim() || !uploadTargetGuru) {
+      toast.error('Nama file dan file wajib diisi')
+      return
+    }
+    // Cek sesi lagi sebelum upload
+    const session = getUploadSession()
+    if (!session.active) {
+      setShowUploadModal(false)
+      setSessionExpired(true)
+      return
+    }
+
+    setUploading(true)
+    try {
+      const ext = uploadFile.name.split('.').pop()
+      const path = `${uploadTargetGuru.id}/${Date.now()}.${ext}`
+      const { error: storageErr } = await supabase.storage
+        .from('file-guru').upload(path, uploadFile)
+      if (storageErr) throw storageErr
+
+      const { data: urlData } = supabase.storage.from('file-guru').getPublicUrl(path)
+
+      const { error: dbErr } = await supabase.from('file_guru').insert({
+        guru_id: uploadTargetGuru.id,
+        jenis_file_id: uploadJenisId || null,
+        nama_file: uploadNama.trim(),
+        file_url: urlData.publicUrl,
+        file_size: uploadFile.size,
+        file_type: uploadFile.type,
+        uploaded_by: null,
+      })
+      if (dbErr) throw dbErr
+
+      toast.success('File berhasil diupload!')
+      setShowUploadModal(false)
+      await refreshGuru(uploadTargetGuru.id)
+    } catch (err: any) {
+      toast.error('Gagal upload: ' + err.message)
+    }
+    setUploading(false)
+  }
+
+  // ─── Filter data ─────────────────────────────────────────────────────────────
   const filteredGuru = guruList.filter(g =>
     g.nama_lengkap.toLowerCase().includes(search.toLowerCase()) ||
     g.nik?.includes(search)
   )
-
   const guruOnly = filteredGuru.filter(g => g.jabatan !== 'Tendik')
   const tendikOnly = filteredGuru.filter(g => g.jabatan === 'Tendik')
 
@@ -106,23 +236,19 @@ export default function PortalPage() {
     )
 
   const allKategori = Array.from(new Set(arsipList.map(a => a.kategori))).filter(Boolean)
-
   const filteredArsip = arsipList.filter(a =>
     (filterKategori === 'semua' || a.kategori === filterKategori) &&
     (a.nama_file.toLowerCase().includes(search.toLowerCase()) ||
      a.kategori.toLowerCase().includes(search.toLowerCase()) ||
      a.deskripsi?.toLowerCase().includes(search.toLowerCase()))
   )
-
   const allKelas = Array.from(new Set(siswaList.map(s => s.kelas).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-
   const arsipByKategori: Record<string, ArsipSekolah[]> = {}
   filteredArsip.forEach(a => {
     if (!arsipByKategori[a.kategori]) arsipByKategori[a.kategori] = []
     arsipByKategori[a.kategori].push(a)
   })
 
-  const totalGuruFiles = guruList.reduce((sum, g) => sum + (g.file_guru?.length || 0), 0)
   const totalSiswaFiles = siswaList.reduce((sum, s) => sum + (s.file_siswa?.length || 0), 0)
 
   return (
@@ -176,16 +302,12 @@ export default function PortalPage() {
                 key={tab.key}
                 onClick={() => { setActiveTab(tab.key); setSearch(''); setFilterKategori('semua'); setFilterKelas('semua') }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                  activeTab === tab.key
-                    ? `${tab.color} text-white shadow-md`
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  activeTab === tab.key ? `${tab.color} text-white shadow-md` : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
-                <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${
-                  activeTab === tab.key ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'
-                }`}>
+                <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${activeTab === tab.key ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'}`}>
                   {tab.count}
                 </span>
               </button>
@@ -285,7 +407,15 @@ export default function PortalPage() {
                   ) : (
                     <div className="space-y-2">
                       {guruOnly.map(guru => (
-                        <GuruCard key={guru.id} guru={guru} expandedIds={expandedIds} onToggle={toggleExpand} onPreview={setPreviewFile} onDownload={handleDownload} />
+                        <GuruCard
+                          key={guru.id} guru={guru}
+                          expandedIds={expandedIds}
+                          onToggle={toggleExpand}
+                          onPreview={setPreviewFile}
+                          onDownload={handleDownload}
+                          onClickUpload={handleClickUpload}
+                          checkingStorageFor={checkingStorage ? uploadTargetGuru?.id : null}
+                        />
                       ))}
                     </div>
                   )}
@@ -303,7 +433,15 @@ export default function PortalPage() {
                   ) : (
                     <div className="space-y-2">
                       {tendikOnly.map(guru => (
-                        <GuruCard key={guru.id} guru={guru} expandedIds={expandedIds} onToggle={toggleExpand} onPreview={setPreviewFile} onDownload={handleDownload} />
+                        <GuruCard
+                          key={guru.id} guru={guru}
+                          expandedIds={expandedIds}
+                          onToggle={toggleExpand}
+                          onPreview={setPreviewFile}
+                          onDownload={handleDownload}
+                          onClickUpload={handleClickUpload}
+                          checkingStorageFor={checkingStorage ? uploadTargetGuru?.id : null}
+                        />
                       ))}
                     </div>
                   )}
@@ -360,6 +498,7 @@ export default function PortalPage() {
         {profil?.nama_sekolah} · Portal Dokumen Publik
       </footer>
 
+      {/* Modal Preview File */}
       {previewFile && (
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setPreviewFile(null) }}>
           <div className="modal-content max-w-lg">
@@ -386,24 +525,151 @@ export default function PortalPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Sesi Expired */}
+      {sessionExpired && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setSessionExpired(false) }}>
+          <div className="modal-content max-w-sm">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-7 h-7 text-amber-500" />
+              </div>
+              <div>
+                <h2 className="font-display font-bold text-slate-800 text-lg">Sesi Upload Berakhir</h2>
+                <p className="text-slate-500 text-sm mt-2">
+                  Demi keamanan, sesi upload Anda telah berakhir. Silakan coba lagi besok.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-400 bg-slate-50 rounded-xl p-3">
+                <Clock className="w-4 h-4" />
+                <span>Sesi aktif selama 1 jam sejak upload pertama</span>
+              </div>
+              <button onClick={() => setSessionExpired(false)} className="btn-secondary w-full">
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Upload File */}
+      {showUploadModal && uploadTargetGuru && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowUploadModal(false) }}>
+          <div className="modal-content max-w-lg">
+            <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
+              <div>
+                <h2 className="font-display font-bold text-lg">Upload File</h2>
+                <p className="text-white/70 text-sm truncate max-w-xs">{uploadTargetGuru.nama_lengkap}</p>
+              </div>
+              <button onClick={() => setShowUploadModal(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Info sesi */}
+              <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-700">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span>Sesi upload aktif · Anda dapat mengupload file selama 1 jam</span>
+              </div>
+
+              <div>
+                <label className="label">Nama File *</label>
+                <input
+                  className="input"
+                  placeholder="Contoh: Ijazah S1, SK Mengajar 2024"
+                  value={uploadNama}
+                  onChange={e => setUploadNama(e.target.value)}
+                />
+              </div>
+
+              {jenisFileList.length > 0 && (
+                <div>
+                  <label className="label">Jenis File</label>
+                  <select className="input" value={uploadJenisId} onChange={e => setUploadJenisId(e.target.value)}>
+                    <option value="">— Pilih Jenis File (opsional) —</option>
+                    {jenisFileList.map(j => (
+                      <option key={j.id} value={j.id}>{j.nama}{j.wajib ? ' *' : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="label">File *</label>
+                <div
+                  className={`drop-zone ${dragOver ? 'drag-over' : ''} cursor-pointer`}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={e => {
+                    e.preventDefault(); setDragOver(false)
+                    const f = e.dataTransfer.files[0]
+                    if (f) { setUploadFile(f); if (!uploadNama) setUploadNama(f.name.replace(/\.[^.]+$/, '')) }
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef} type="file" className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) { setUploadFile(f); if (!uploadNama) setUploadNama(f.name.replace(/\.[^.]+$/, '')) }
+                    }}
+                  />
+                  {uploadFile ? (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">{getFileIcon(uploadFile.type)}</div>
+                      <p className="font-medium text-slate-700 text-sm">{uploadFile.name}</p>
+                      <p className="text-xs text-slate-400 mt-1">{formatBytes(uploadFile.size)}</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Upload className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-slate-500 text-sm">Klik atau seret file ke sini</p>
+                      <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, DOCX (max 50MB)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowUploadModal(false)} className="btn-secondary flex-1">Batal</button>
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading || !uploadFile || !uploadNama.trim()}
+                  className="btn-primary flex-1"
+                >
+                  {uploading ? <div className="spinner" /> : <Upload className="w-4 h-4" />}
+                  {uploading ? 'Mengupload...' : 'Upload File'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function GuruCard({ guru, expandedIds, onToggle, onPreview, onDownload }: {
+// ─── Komponen GuruCard ────────────────────────────────────────────────────────
+function GuruCard({ guru, expandedIds, onToggle, onPreview, onDownload, onClickUpload, checkingStorageFor }: {
   guru: DataGuru
   expandedIds: Set<string>
   onToggle: (id: string) => void
   onPreview: (f: { nama: string; url: string; type: string }) => void
   onDownload: (url: string, nama: string) => void
+  onClickUpload: (guru: DataGuru) => void
+  checkingStorageFor: string | null
 }) {
   const files = guru.file_guru || []
   const expanded = expandedIds.has(guru.id)
   const isTendik = guru.jabatan === 'Tendik'
+  const isCheckingThis = checkingStorageFor === guru.id
 
   return (
     <div className="card overflow-hidden">
-      <button className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors" onClick={() => onToggle(guru.id)}>
+      <button
+        className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors"
+        onClick={() => onToggle(guru.id)}
+      >
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isTendik ? 'bg-gradient-to-br from-amber-100 to-orange-100' : 'bg-gradient-to-br from-blue-100 to-primary-100'}`}>
           <GraduationCap className={`w-5 h-5 ${isTendik ? 'text-amber-600' : 'text-primary-600'}`} />
         </div>
@@ -418,10 +684,32 @@ function GuruCard({ guru, expandedIds, onToggle, onPreview, onDownload }: {
           {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
         </div>
       </button>
+
       {expanded && (
-        <div className="border-t border-slate-100 px-4 pb-4 pt-3">
+        <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-3">
+          {/* Pesan ajakan upload */}
+          <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-blue-700 font-medium">Ini data Anda?</p>
+              <p className="text-xs text-blue-600 mt-0.5">Anda dapat menambahkan file dokumen langsung dari sini.</p>
+            </div>
+            <button
+              onClick={e => { e.stopPropagation(); onClickUpload(guru) }}
+              disabled={isCheckingThis}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold transition-colors flex-shrink-0 disabled:opacity-70"
+            >
+              {isCheckingThis ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Memeriksa...</>
+              ) : (
+                <><Upload className="w-3.5 h-3.5" /> Upload File</>
+              )}
+            </button>
+          </div>
+
+          {/* Daftar file */}
           {files.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-3">Belum ada file diupload</p>
+            <p className="text-sm text-slate-400 text-center py-2">Belum ada file diupload</p>
           ) : (
             <div className="space-y-2">
               {files.map((file: FileGuru) => (
@@ -445,6 +733,7 @@ function GuruCard({ guru, expandedIds, onToggle, onPreview, onDownload }: {
   )
 }
 
+// ─── Komponen FileRow ─────────────────────────────────────────────────────────
 function FileRow({ nama, fileUrl, fileType, fileSize, createdAt, jenisNama, onPreview, onDownload }: {
   nama: string; fileUrl: string; fileType: string; fileSize: number; createdAt: string; jenisNama?: string; onPreview: () => void; onDownload: () => void
 }) {
