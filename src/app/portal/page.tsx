@@ -522,7 +522,7 @@ export default function PortalPage() {
             </div>
           </div>
           <p className="text-xs text-slate-400 text-center">
-            ✨ Terima kasih telah mengunjungi portal kami!
+            ✨ Terima kasih telah mengunjungi portal ini!
           </p>
         </div>
         <p className="text-center text-xs text-slate-400">{profil?.nama_sekolah} · Portal Dokumen Publik</p>
