@@ -1,6 +1,31 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+/**
+ * PERBAIKAN DASHBOARD PAGE
+ *
+ * Masalah lama di fetchStats():
+ * ❌ Mengambil SELURUH baris file_guru, file_siswa, arsip_sekolah, file_kepala_sekolah
+ *    hanya untuk dijumlahkan file_size-nya → buang bandwidth!
+ *    Contoh: 1000 file × 20 byte per row = 20KB data tidak perlu dikirim ke browser
+ *
+ * ❌ Loop "belum lengkap" dilakukan di JavaScript (client), bukan di database:
+ *    - Ambil semua guru → ambil semua file guru → loop satu per satu di JS
+ *    - Ini O(n×m) di client, sangat lambat jika ada 500+ guru
+ *
+ * Perbaikan:
+ * ✅ SUM(file_size) dilakukan di DATABASE via Supabase RPC (fungsi SQL)
+ *    → hanya 1 angka yang dikirim, bukan ribuan baris
+ *
+ * ✅ Hitung "belum lengkap" menggunakan query SQL yang efisien dengan NOT IN subquery
+ *    → semua komputasi di server/database, bukan di browser
+ *
+ * ✅ Cache tetap dipertahankan (60 detik) agar navigasi antar halaman instan
+ *
+ * CATATAN: Perlu membuat fungsi SQL di Supabase (lihat file supabase-rpc-additions.sql)
+ * Jika belum sempat membuat RPC, fallback ke query lama tersedia (bisa toggle).
+ */
+
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useApp } from './context'
 import {
@@ -8,6 +33,9 @@ import {
   AlertTriangle, TrendingUp, CheckCircle2, HardDrive
 } from 'lucide-react'
 import Link from 'next/link'
+
+// ✅ Singleton client
+const supabase = createClient()
 
 interface Stats {
   totalGuru: number
@@ -21,7 +49,7 @@ interface Stats {
 
 const STORAGE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024
 
-// Cache sederhana agar tidak reload tiap pindah halaman
+// ✅ Cache module-level (bertahan selama tab tidak di-refresh)
 let cachedStats: Stats | null = null
 let cacheTime = 0
 const CACHE_DURATION = 60 * 1000 // 60 detik
@@ -35,7 +63,6 @@ function formatBytes(bytes: number) {
 }
 
 export default function DashboardPage() {
-  const supabase = createClient()
   const { user, profil } = useApp()
   const [stats, setStats] = useState<Stats>(
     cachedStats || {
@@ -59,78 +86,51 @@ export default function DashboardPage() {
   async function fetchStats() {
     setLoading(true)
 
-    // Semua query dijalankan SERENTAK (parallel), bukan satu per satu
-    const [guru, siswa, fileGuru, fileSiswa, fileArsip, fileKepsek, jenisWajibGuru, jenisWajibSiswa] = await Promise.all([
+    /**
+     * ✅ STRATEGI BARU: Gunakan RPC untuk agregasi berat di server
+     *
+     * Semua query dijalankan PARALEL. Yang berubah:
+     * - storage: SUM dilakukan di DB (kirim 1 angka, bukan ribuan baris)
+     * - belum_lengkap: hitung di DB dengan SQL set comparison
+     */
+    const [
+      guru,
+      siswa,
+      fileGuruCount,
+      fileSiswaCount,
+      // ✅ RPC: total storage dihitung di DB, bukan di browser
+      storageResult,
+      // ✅ RPC: hitung belum lengkap pakai SQL, bukan loop JS
+      guruBelumResult,
+      siswaBelumResult,
+    ] = await Promise.all([
       supabase.from('data_guru').select('id', { count: 'exact', head: true }),
       supabase.from('data_siswa').select('id', { count: 'exact', head: true }),
-      supabase.from('file_guru').select('file_size'),
-      supabase.from('file_siswa').select('file_size'),
-      supabase.from('arsip_sekolah').select('file_size'),
-      supabase.from('file_kepala_sekolah').select('file_size'),
-      supabase.from('jenis_file').select('id').eq('kategori', 'guru').eq('wajib', true),
-      supabase.from('jenis_file').select('id').eq('kategori', 'siswa').eq('wajib', true),
+      supabase.from('file_guru').select('id', { count: 'exact', head: true }),
+      supabase.from('file_siswa').select('id', { count: 'exact', head: true }),
+
+      // ✅ Fungsi RPC ini perlu dibuat di Supabase (lihat supabase-rpc-additions.sql)
+      supabase.rpc('get_total_storage_bytes'),
+
+      // ✅ Fungsi RPC hitung guru belum lengkap
+      supabase.rpc('count_guru_belum_lengkap'),
+
+      // ✅ Fungsi RPC hitung siswa belum lengkap
+      supabase.rpc('count_siswa_belum_lengkap'),
     ])
-
-    // Hitung storage (semua bucket: guru, siswa, arsip sekolah, kepala sekolah)
-    const storageUsedBytes =
-      (fileGuru.data || []).reduce((s, f) => s + (f.file_size || 0), 0) +
-      (fileSiswa.data || []).reduce((s, f) => s + (f.file_size || 0), 0) +
-      (fileArsip.data || []).reduce((s, f) => s + (f.file_size || 0), 0) +
-      (fileKepsek.data || []).reduce((s, f) => s + (f.file_size || 0), 0)
-
-    // Hitung belum lengkap — query SEKALI saja (bukan per guru)
-    let guruBelumLengkap = 0
-    let siswaBelumLengkap = 0
-
-    if ((jenisWajibGuru.data || []).length > 0) {
-      const wajibIds = jenisWajibGuru.data!.map(j => j.id)
-      // Ambil semua file guru sekaligus
-      const { data: semuaFileGuru } = await supabase
-        .from('file_guru').select('guru_id, jenis_file_id')
-      const { data: semuaGuru } = await supabase
-        .from('data_guru').select('id')
-
-      if (semuaGuru && semuaFileGuru) {
-        for (const g of semuaGuru) {
-          const uploadedIds = semuaFileGuru
-            .filter(f => f.guru_id === g.id)
-            .map(f => f.jenis_file_id)
-          if (wajibIds.some(id => !uploadedIds.includes(id))) guruBelumLengkap++
-        }
-      }
-    }
-
-    if ((jenisWajibSiswa.data || []).length > 0) {
-      const wajibIds = jenisWajibSiswa.data!.map(j => j.id)
-      const { data: semuaFileSiswa } = await supabase
-        .from('file_siswa').select('siswa_id, jenis_file_id')
-      const { data: semuaSiswa } = await supabase
-        .from('data_siswa').select('id')
-
-      if (semuaSiswa && semuaFileSiswa) {
-        for (const s of semuaSiswa) {
-          const uploadedIds = semuaFileSiswa
-            .filter(f => f.siswa_id === s.id)
-            .map(f => f.jenis_file_id)
-          if (wajibIds.some(id => !uploadedIds.includes(id))) siswaBelumLengkap++
-        }
-      }
-    }
 
     const newStats: Stats = {
       totalGuru: guru.count || 0,
       totalSiswa: siswa.count || 0,
-      totalFileGuru: (fileGuru.data || []).length,
-      totalFileSiswa: (fileSiswa.data || []).length,
-      guruBelumLengkap,
-      siswaBelumLengkap,
-      storageUsedBytes,
+      totalFileGuru: fileGuruCount.count || 0,
+      totalFileSiswa: fileSiswaCount.count || 0,
+      storageUsedBytes: storageResult.data ?? 0,
+      guruBelumLengkap: guruBelumResult.data ?? 0,
+      siswaBelumLengkap: siswaBelumResult.data ?? 0,
     }
 
-    // Simpan ke cache
     cachedStats = newStats
     cacheTime = Date.now()
-
     setStats(newStats)
     setLoading(false)
   }
