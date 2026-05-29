@@ -42,6 +42,7 @@ const EMPTY_FORM = {
   periode_mulai: '',
   periode_selesai: '',
   is_active: true,
+  no_telepon: '',
 }
 
 function formatBytes(bytes: number) {
@@ -350,6 +351,7 @@ export default function KepalaSekolahPage() {
       periode_mulai: ks.periode_mulai ?? '',
       periode_selesai: ks.periode_selesai ?? '',
       is_active: ks.is_active,
+      no_telepon: ks.no_telepon || '',
     })
     setFotoFile(null)
     setFotoPreview('')
@@ -392,6 +394,7 @@ export default function KepalaSekolahPage() {
         periode_mulai: form.periode_mulai || null,
         periode_selesai: form.periode_selesai || null,
         is_active: form.is_active,
+        no_telepon: form.no_telepon.trim(),
         updated_at: new Date().toISOString(),
       }
       if (form.is_active) {
@@ -587,6 +590,15 @@ export default function KepalaSekolahPage() {
                 {aktif.pendidikan_terakhir && (
                   <p className="text-sm text-slate-500 flex items-center gap-1.5 mb-1">
                     <GraduationCap className="w-4 h-4 text-slate-400" /> {aktif.pendidikan_terakhir}
+                  </p>
+                )}
+                {aktif.no_telepon && (
+                  <p className="text-sm text-slate-500 flex items-center gap-1.5 mb-1">
+                    📱{' '}
+                    <a href={`https://wa.me/${aktif.no_telepon.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+                      className="text-emerald-600 hover:underline">
+                      {aktif.no_telepon}
+                    </a>
                   </p>
                 )}
                 {(aktif.periode_mulai || aktif.periode_selesai) && (
@@ -794,6 +806,10 @@ export default function KepalaSekolahPage() {
                   <label className="label">Periode Selesai</label>
                   <input type="date" className="input" value={form.periode_selesai} onChange={e => setForm({ ...form, periode_selesai: e.target.value })} />
                 </div>
+              </div>
+              <div>
+                <label className="label">No. Telepon / WhatsApp</label>
+                <input className="input" value={form.no_telepon} onChange={e => setForm({ ...form, no_telepon: e.target.value })} placeholder="Contoh: 08123456789" />
               </div>
               <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <input type="checkbox" id="is_active" className="w-4 h-4 accent-primary-600 cursor-pointer" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} />
