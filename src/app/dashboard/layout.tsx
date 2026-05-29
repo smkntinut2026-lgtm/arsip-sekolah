@@ -146,7 +146,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <AppContext.Provider value={{ user, profil, refreshProfil: fetchProfil }}>
-      <div className="min-h-screen flex">
+      <div className="h-screen flex overflow-hidden">
 
         {/* Overlay mobile */}
         {sidebarOpen && (
@@ -159,7 +159,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* ===== SIDEBAR ===== */}
         <aside className={clsx(
           'fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-100 shadow-lg z-40 flex flex-col transition-transform duration-300',
-          'lg:translate-x-0 lg:static lg:shadow-none',
+          'lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:shadow-none lg:shrink-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}>
           {/* Sidebar header */}
@@ -245,7 +245,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* ===== MAIN CONTENT ===== */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
 
           {/* Top header */}
           <header className="h-14 bg-white border-b border-slate-100 flex items-center px-3 sm:px-4 lg:px-6 gap-3 sticky top-0 z-20 shadow-sm">
