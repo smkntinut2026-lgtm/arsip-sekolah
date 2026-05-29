@@ -66,7 +66,7 @@ export default function PortalPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<ActiveTab>('arsip')
   const [search, setSearch] = useState('')
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterKategori, setFilterKategori] = useState('semua')
   const [filterKelas, setFilterKelas] = useState('semua')
   const [previewFile, setPreviewFile] = useState<{ nama: string; url: string; type: string } | null>(null)
@@ -120,11 +120,7 @@ export default function PortalPage() {
   }
 
   function toggleExpand(id: string) {
-    setExpandedIds(prev => {
-      const n = new Set(prev)
-      n.has(id) ? n.delete(id) : n.add(id)
-      return n
-    })
+    setExpandedId(prev => (prev === id ? null : id))
   }
 
   async function handleDownload(fileUrl: string, namaFile: string) {
@@ -437,7 +433,7 @@ export default function PortalPage() {
                       {guruOnly.map(guru => (
                         <GuruCard
                           key={guru.id} guru={guru}
-                          expandedIds={expandedIds}
+                          expandedId={expandedId}
                           onToggle={toggleExpand}
                           onPreview={setPreviewFile}
                           onDownload={handleDownload}
@@ -463,7 +459,7 @@ export default function PortalPage() {
                       {tendikOnly.map(guru => (
                         <GuruCard
                           key={guru.id} guru={guru}
-                          expandedIds={expandedIds}
+                          expandedId={expandedId}
                           onToggle={toggleExpand}
                           onPreview={setPreviewFile}
                           onDownload={handleDownload}
@@ -486,7 +482,7 @@ export default function PortalPage() {
               </div>
             ) : filteredSiswa.map(siswa => {
               const files = siswa.file_siswa || []
-              const expanded = expandedIds.has(siswa.id)
+              const expanded = expandedId === siswa.id
               return (
                 <div key={siswa.id} className="card overflow-hidden">
                   <button className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors" onClick={() => toggleExpand(siswa.id)}>
@@ -701,9 +697,9 @@ export default function PortalPage() {
 }
 
 // ─── Komponen GuruCard ────────────────────────────────────────────────────────
-function GuruCard({ guru, expandedIds, onToggle, onPreview, onDownload, onClickUpload, checkingStorageFor }: {
+function GuruCard({ guru, expandedId, onToggle, onPreview, onDownload, onClickUpload, checkingStorageFor }: {
   guru: DataGuru
-  expandedIds: Set<string>
+  expandedId: string | null
   onToggle: (id: string) => void
   onPreview: (f: { nama: string; url: string; type: string }) => void
   onDownload: (url: string, nama: string) => void
@@ -711,7 +707,7 @@ function GuruCard({ guru, expandedIds, onToggle, onPreview, onDownload, onClickU
   checkingStorageFor: string | null
 }) {
   const files = guru.file_guru || []
-  const expanded = expandedIds.has(guru.id)
+  const expanded = expandedId === guru.id
   const isTendik = guru.jabatan === 'Tendik'
   const isCheckingThis = checkingStorageFor === guru.id
 
