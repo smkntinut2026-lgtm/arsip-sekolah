@@ -34,6 +34,7 @@ export interface DataGuru {
   tanggal_lahir: string | null
   pendidikan_terakhir: string
   gelar: string
+  no_telepon: string  // ✅ Kolom baru
   created_at: string
   updated_at: string
   file_guru?: FileGuru[]
@@ -103,6 +104,7 @@ export interface KepalaSekolah {
   periode_mulai: string | null
   periode_selesai: string | null
   is_active: boolean
+  no_telepon: string  // ✅ Kolom baru
   created_at: string
   updated_at: string
 }
