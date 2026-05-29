@@ -212,7 +212,7 @@ export default function SiswaPage() {
           <p className="text-slate-500 text-sm mt-0.5">{siswaList.length} siswa terdaftar</p>
         </div>
         {isAdmin && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {selected.size > 0 && (
               <button onClick={handleBulkDelete} className="btn-secondary text-sm text-rose-600 border-rose-200 hover:bg-rose-50">
                 <Trash2 className="w-4 h-4" /> Hapus {selected.size} Terpilih
@@ -275,9 +275,9 @@ export default function SiswaPage() {
                   </th>
                 )}
                 <th>Nama Siswa</th>
-                <th>NISN</th>
-                <th>Kelas</th>
-                <th>File</th>
+                <th className="hidden sm:table-cell">NISN</th>
+                <th className="hidden sm:table-cell">Kelas</th>
+                <th className="hidden md:table-cell">File</th>
                 <th>Status</th>
                 <th>Aksi</th>
               </tr>
@@ -314,10 +314,14 @@ export default function SiswaPage() {
                           {siswa.tempat_lahir}, {format(new Date(siswa.tanggal_lahir), 'dd MMM yyyy', { locale: localeId })}
                         </div>
                       )}
+                      <div className="flex items-center gap-2 mt-0.5 sm:hidden">
+                        {siswa.kelas && <span className="badge-purple text-xs">{siswa.kelas}</span>}
+                        {siswa.nisn && <span className="text-xs text-slate-400">{siswa.nisn}</span>}
+                      </div>
                     </td>
-                    <td className="font-mono text-sm">{siswa.nisn || '-'}</td>
-                    <td>{siswa.kelas ? <span className="badge-purple">{siswa.kelas}</span> : '-'}</td>
-                    <td>
+                    <td className="hidden sm:table-cell font-mono text-sm">{siswa.nisn || '-'}</td>
+                    <td className="hidden sm:table-cell">{siswa.kelas ? <span className="badge-purple">{siswa.kelas}</span> : '-'}</td>
+                    <td className="hidden md:table-cell">
                       <div className="flex items-center gap-1.5">
                         <Paperclip className="w-3.5 h-3.5 text-slate-400" />
                         <span className="text-sm font-medium">{(siswa.file_siswa || []).length}</span>
