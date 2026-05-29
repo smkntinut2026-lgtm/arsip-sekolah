@@ -714,26 +714,26 @@ function GuruCard({ guru, expandedId, onToggle, onPreview, onDownload, onClickUp
   return (
     <div className="card overflow-hidden">
       <button
-        className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50 transition-colors"
+        className={`w-full flex items-center gap-3 p-4 text-left transition-colors ${isTendik ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600' : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600'}`}
         onClick={() => onToggle(guru.id)}
       >
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isTendik ? 'bg-gradient-to-br from-amber-100 to-orange-100' : 'bg-gradient-to-br from-blue-100 to-primary-100'}`}>
-          <GraduationCap className={`w-5 h-5 ${isTendik ? 'text-amber-600' : 'text-primary-600'}`} />
+        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+          <GraduationCap className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-slate-800 text-sm">{guru.nama_lengkap}</p>
-          <p className="text-xs text-slate-400">{guru.gelar && `${guru.gelar} · `}{guru.nik || 'NIK tidak tersedia'}</p>
+          <p className="font-semibold text-white text-sm">{guru.nama_lengkap}</p>
+          <p className="text-xs text-white/70">{guru.gelar && `${guru.gelar} · `}{guru.nik || 'NIK tidak tersedia'}</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${files.length > 0 ? (isTendik ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700') : 'bg-slate-100 text-slate-400'}`}>
+          <span className="text-xs font-semibold px-2 py-1 rounded-full bg-white/25 text-white">
             {files.length} file
           </span>
-          {expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+          {expanded ? <ChevronDown className="w-4 h-4 text-white/80" /> : <ChevronRight className="w-4 h-4 text-white/80" />}
         </div>
       </button>
 
       {expanded && (
-        <div className={`border-t px-4 pb-4 pt-3 space-y-3 ${isTendik ? 'border-amber-100 bg-amber-50/60' : 'border-blue-100 bg-slate-50/80'}`}>
+        <div className={`border-t px-4 pb-4 pt-3 space-y-3 ${isTendik ? 'border-amber-200 bg-orange-50' : 'border-blue-200 bg-blue-50'}`}>
           {/* Pesan ajakan upload */}
           <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
             <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
