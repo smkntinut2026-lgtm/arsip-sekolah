@@ -70,6 +70,24 @@ export default function PortalPage() {
     })
   }
 
+  async function handleDownload(fileUrl: string, namaFile: string) {
+    try {
+      const res = await fetch(fileUrl)
+      if (!res.ok) throw new Error('Gagal mengambil file')
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = namaFile
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      window.open(fileUrl, '_blank')
+    }
+  }
+
   const filteredGuru = guruList.filter(g =>
     g.nama_lengkap.toLowerCase().includes(search.toLowerCase()) ||
     g.nik?.includes(search)
@@ -221,9 +239,9 @@ export default function PortalPage() {
                         <button onClick={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} className="btn-icon">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <a href={file.file_url} download className="btn-icon">
+                        <button onClick={() => handleDownload(file.file_url, file.nama_file)} className="btn-icon">
                           <Download className="w-4 h-4" />
-                        </a>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -263,7 +281,7 @@ export default function PortalPage() {
                       ) : (
                         <div className="space-y-2">
                           {files.map((file: FileGuru) => (
-                            <FileRow key={file.id} nama={file.nama_file} fileUrl={file.file_url} fileType={file.file_type} fileSize={file.file_size} createdAt={file.created_at} jenisNama={file.jenis_file?.nama} onPreview={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} />
+                            <FileRow key={file.id} nama={file.nama_file} fileUrl={file.file_url} fileType={file.file_type} fileSize={file.file_size} createdAt={file.created_at} jenisNama={file.jenis_file?.nama} onPreview={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} onDownload={() => handleDownload(file.file_url, file.nama_file)} />
                           ))}
                         </div>
                       )}
@@ -305,7 +323,7 @@ export default function PortalPage() {
                       ) : (
                         <div className="space-y-2">
                           {files.map((file: FileSiswa) => (
-                            <FileRow key={file.id} nama={file.nama_file} fileUrl={file.file_url} fileType={file.file_type} fileSize={file.file_size} createdAt={file.created_at} jenisNama={file.jenis_file?.nama} onPreview={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} />
+                            <FileRow key={file.id} nama={file.nama_file} fileUrl={file.file_url} fileType={file.file_type} fileSize={file.file_size} createdAt={file.created_at} jenisNama={file.jenis_file?.nama} onPreview={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} onDownload={() => handleDownload(file.file_url, file.nama_file)} />
                           ))}
                         </div>
                       )}
@@ -340,9 +358,9 @@ export default function PortalPage() {
                 <a href={previewFile.url} target="_blank" rel="noopener noreferrer" className="btn-secondary flex-1">
                   <Eye className="w-4 h-4" /> Buka / Lihat
                 </a>
-                <a href={previewFile.url} download className="btn-primary flex-1">
+                <button onClick={() => handleDownload(previewFile.url, previewFile.nama)} className="btn-primary flex-1">
                   <Download className="w-4 h-4" /> Download
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -352,8 +370,8 @@ export default function PortalPage() {
   )
 }
 
-function FileRow({ nama, fileUrl, fileType, fileSize, createdAt, jenisNama, onPreview }: {
-  nama: string; fileUrl: string; fileType: string; fileSize: number; createdAt: string; jenisNama?: string; onPreview: () => void
+function FileRow({ nama, fileUrl, fileType, fileSize, createdAt, jenisNama, onPreview, onDownload }: {
+  nama: string; fileUrl: string; fileType: string; fileSize: number; createdAt: string; jenisNama?: string; onPreview: () => void; onDownload: () => void
 }) {
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary-200 transition-colors">
@@ -367,7 +385,7 @@ function FileRow({ nama, fileUrl, fileType, fileSize, createdAt, jenisNama, onPr
       </div>
       <div className="flex gap-1 flex-shrink-0">
         <button onClick={onPreview} className="btn-icon"><Eye className="w-4 h-4" /></button>
-        <a href={fileUrl} download className="btn-icon"><Download className="w-4 h-4" /></a>
+        <button onClick={onDownload} className="btn-icon"><Download className="w-4 h-4" /></button>
       </div>
     </div>
   )
