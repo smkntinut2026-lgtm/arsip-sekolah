@@ -40,6 +40,10 @@ export default function GuruPage() {
     pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru'
   })
 
+  // Rekap kelengkapan
+  const [showRekapModal, setShowRekapModal] = useState(false)
+  const [filterRekapJabatan, setFilterRekapJabatan] = useState<'semua' | 'Guru' | 'Tendik'>('semua')
+
   // Bulk delete
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -176,6 +180,169 @@ export default function GuruPage() {
   }
 
 
+  function getMissingFiles(guru: DataGuru) {
+    const uploadedIds = (guru.file_guru || []).map(f => f.jenis_file_id)
+    const missing = jenisFileList.filter(j => !uploadedIds.includes(j.id))
+    return missing
+  }
+
+  function getRekapData() {
+    return guruList
+      .filter(g => filterRekapJabatan === 'semua' ? true : g.jabatan === filterRekapJabatan)
+      .map(g => ({
+        guru: g,
+        missing: getMissingFiles(g),
+        wajibMissing: getMissingFiles(g).filter(j => j.wajib),
+        opsionalMissing: getMissingFiles(g).filter(j => !j.wajib),
+        lengkap: isLengkap(g),
+      }))
+      .sort((a, b) => {
+        // Tampilkan yang belum lengkap duluan
+        if (!a.lengkap && b.lengkap) return -1
+        if (a.lengkap && !b.lengkap) return 1
+        return a.guru.nama_lengkap.localeCompare(b.guru.nama_lengkap)
+      })
+  }
+
+  function downloadRekapPDF() {
+    const rekap = getRekapData()
+    const tanggal = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+
+    // Buat HTML untuk dicetak jadi PDF via browser print
+    const htmlContent = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Rekap Kelengkapan File Guru & Tendik</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #1e293b; padding: 24px; }
+    h1 { font-size: 16px; font-weight: bold; margin-bottom: 2px; }
+    .subtitle { font-size: 11px; color: #64748b; margin-bottom: 4px; }
+    .meta { font-size: 10px; color: #94a3b8; margin-bottom: 20px; }
+    .summary { display: flex; gap: 16px; margin-bottom: 20px; }
+    .summary-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 16px; flex: 1; }
+    .summary-card .num { font-size: 22px; font-weight: bold; }
+    .summary-card .lbl { font-size: 10px; color: #64748b; }
+    .num-ok { color: #16a34a; }
+    .num-warn { color: #dc2626; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    thead { background: #1e40af; color: white; }
+    thead th { padding: 7px 10px; text-align: left; font-size: 10px; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody tr.lengkap { opacity: 0.65; }
+    td { padding: 6px 10px; vertical-align: top; border-bottom: 1px solid #f1f5f9; font-size: 10px; }
+    .badge { display: inline-block; padding: 2px 7px; border-radius: 99px; font-size: 9px; font-weight: bold; margin-right: 3px; margin-bottom: 2px; }
+    .badge-red { background: #fee2e2; color: #dc2626; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; }
+    .badge-green { background: #dcfce7; color: #16a34a; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-amber { background: #fef3c7; color: #92400e; }
+    .status-ok { color: #16a34a; font-weight: bold; }
+    .status-warn { color: #dc2626; font-weight: bold; }
+    .jabatan-guru { background: #dbeafe; color: #1e40af; }
+    .jabatan-tendik { background: #fef3c7; color: #92400e; }
+    .section-title { font-size: 13px; font-weight: bold; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #e2e8f0; }
+    @media print { body { padding: 16px; } }
+  </style>
+</head>
+<body>
+  <h1>Rekap Kelengkapan File Guru & Tendik</h1>
+  <div class="subtitle">SMK — Dokumen ini digenerate secara otomatis oleh sistem arsip sekolah</div>
+  <div class="meta">Tanggal cetak: ${tanggal} &nbsp;|&nbsp; Filter: ${filterRekapJabatan === 'semua' ? 'Semua (Guru & Tendik)' : filterRekapJabatan}</div>
+
+  <div class="summary">
+    <div class="summary-card">
+      <div class="num">${rekap.length}</div>
+      <div class="lbl">Total Pegawai</div>
+    </div>
+    <div class="summary-card">
+      <div class="num num-ok">${rekap.filter(r => r.lengkap).length}</div>
+      <div class="lbl">File Lengkap</div>
+    </div>
+    <div class="summary-card">
+      <div class="num num-warn">${rekap.filter(r => !r.lengkap).length}</div>
+      <div class="lbl">Belum Lengkap</div>
+    </div>
+    <div class="summary-card">
+      <div class="num num-warn">${rekap.reduce((s, r) => s + r.wajibMissing.length, 0)}</div>
+      <div class="lbl">Total File Wajib Kurang</div>
+    </div>
+  </div>
+
+  ${rekap.filter(r => !r.lengkap).length > 0 ? `
+  <div class="section-title">⚠️ Pegawai dengan File Belum Lengkap (${rekap.filter(r => !r.lengkap).length})</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:3%">No</th>
+        <th style="width:25%">Nama Pegawai</th>
+        <th style="width:8%">Jabatan</th>
+        <th style="width:35%">File Wajib Kurang</th>
+        <th style="width:29%">File Opsional Kurang</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rekap.filter(r => !r.lengkap).map((r, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>
+          <strong>${r.guru.nama_lengkap}</strong>
+          ${r.guru.gelar ? `<br><span style="color:#64748b">${r.guru.gelar}</span>` : ''}
+          <br><span style="color:#94a3b8;font-size:9px">${r.guru.nik || '-'}</span>
+        </td>
+        <td><span class="badge ${r.guru.jabatan === 'Tendik' ? 'jabatan-tendik' : 'jabatan-guru'}">${r.guru.jabatan}</span></td>
+        <td>${r.wajibMissing.length === 0
+          ? '<span style="color:#16a34a">✓ Semua wajib terpenuhi</span>'
+          : r.wajibMissing.map(j => `<span class="badge badge-red">✗ ${j.nama}</span>`).join('')
+        }</td>
+        <td>${r.opsionalMissing.length === 0
+          ? '<span style="color:#16a34a">✓ Lengkap</span>'
+          : r.opsionalMissing.map(j => `<span class="badge badge-yellow">– ${j.nama}</span>`).join('')
+        }</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+  ` : ''}
+
+  <div class="section-title">✅ Pegawai dengan File Lengkap (${rekap.filter(r => r.lengkap).length})</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:3%">No</th>
+        <th style="width:30%">Nama Pegawai</th>
+        <th style="width:10%">Jabatan</th>
+        <th style="width:57%">Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rekap.filter(r => r.lengkap).map((r, i) => `
+      <tr class="lengkap">
+        <td>${i + 1}</td>
+        <td>
+          <strong>${r.guru.nama_lengkap}</strong>
+          ${r.guru.gelar ? `<br><span style="color:#64748b">${r.guru.gelar}</span>` : ''}
+        </td>
+        <td><span class="badge ${r.guru.jabatan === 'Tendik' ? 'jabatan-tendik' : 'jabatan-guru'}">${r.guru.jabatan}</span></td>
+        <td><span class="status-ok">✓ Semua file terpenuhi</span> &nbsp;·&nbsp; ${(r.guru.file_guru || []).length} file tersimpan</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+
+  <div style="margin-top:24px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:8px;">
+    Digenerate otomatis oleh Sistem Arsip Sekolah · ${tanggal}
+  </div>
+</body>
+</html>`
+
+    const win = window.open('', '_blank')
+    if (!win) { alert('Pop-up diblokir browser. Izinkan pop-up untuk halaman ini.'); return }
+    win.document.write(htmlContent)
+    win.document.close()
+    win.focus()
+    setTimeout(() => { win.print() }, 500)
+  }
+
   async function handleDownload(fileUrl: string, namaFile: string) {
     try {
       const res = await fetch(fileUrl)
@@ -267,6 +434,9 @@ export default function GuruPage() {
             )}
             <button onClick={() => setShowImportModal(true)} className="btn-secondary text-sm">
               <Import className="w-4 h-4" /> Import Excel
+            </button>
+            <button onClick={() => setShowRekapModal(true)} className="btn-secondary text-sm text-violet-700 border-violet-200 hover:bg-violet-50">
+              <FileDown className="w-4 h-4" /> Rekap Kelengkapan
             </button>
             <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru' }); setShowAddModal(true) }} className="btn-primary text-sm">
               <Plus className="w-4 h-4" /> Tambah Pegawai
@@ -667,6 +837,125 @@ export default function GuruPage() {
           </div>
         </div>
       )}
+
+      {/* Rekap Kelengkapan Modal */}
+      {showRekapModal && (() => {
+        const rekap = getRekapData()
+        const belumLengkap = rekap.filter(r => !r.lengkap)
+        const sudahLengkap = rekap.filter(r => r.lengkap)
+        return (
+          <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowRekapModal(false) }}>
+            <div className="modal-content" style={{ maxWidth: 760 }}>
+              {/* Header */}
+              <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
+                <div>
+                  <h2 className="font-display font-bold text-lg">Rekap Kelengkapan File</h2>
+                  <p className="text-white/70 text-sm mt-0.5">Guru & Tendik</p>
+                </div>
+                <button onClick={() => setShowRekapModal(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* Filter + Download */}
+                <div className="flex items-center gap-3">
+                  <select
+                    className="input w-auto text-sm"
+                    value={filterRekapJabatan}
+                    onChange={e => setFilterRekapJabatan(e.target.value as any)}
+                  >
+                    <option value="semua">Semua (Guru & Tendik)</option>
+                    <option value="Guru">Guru saja</option>
+                    <option value="Tendik">Tendik saja</option>
+                  </select>
+                  <button
+                    onClick={downloadRekapPDF}
+                    className="btn-primary text-sm ml-auto"
+                  >
+                    <FileDown className="w-4 h-4" /> Download PDF
+                  </button>
+                </div>
+
+                {/* Ringkasan */}
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { label: 'Total', value: rekap.length, color: 'bg-slate-100 text-slate-700' },
+                    { label: 'Lengkap', value: sudahLengkap.length, color: 'bg-emerald-100 text-emerald-700' },
+                    { label: 'Belum Lengkap', value: belumLengkap.length, color: 'bg-rose-100 text-rose-700' },
+                    { label: 'File Wajib Kurang', value: rekap.reduce((s, r) => s + r.wajibMissing.length, 0), color: 'bg-amber-100 text-amber-700' },
+                  ].map(s => (
+                    <div key={s.label} className={`rounded-xl p-3 text-center ${s.color}`}>
+                      <div className="text-2xl font-bold font-display">{s.value}</div>
+                      <div className="text-xs mt-0.5 font-medium">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Belum Lengkap */}
+                {belumLengkap.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-slate-700 text-sm mb-2 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-rose-500" />
+                      Belum Lengkap ({belumLengkap.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {belumLengkap.map(r => (
+                        <div key={r.guru.id} className="border border-rose-100 rounded-xl p-3 bg-rose-50/50">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div>
+                              <span className="font-semibold text-slate-800 text-sm">{r.guru.nama_lengkap}</span>
+                              {r.guru.gelar && <span className="text-xs text-slate-400 ml-1">{r.guru.gelar}</span>}
+                              <span className={`ml-2 text-xs font-semibold px-2 py-0.5 rounded-full ${r.guru.jabatan === 'Tendik' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                                {r.guru.jabatan}
+                              </span>
+                            </div>
+                            <span className="text-xs text-slate-400 shrink-0">{(r.guru.file_guru || []).length} file tersimpan</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {r.wajibMissing.map(j => (
+                              <span key={j.id} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-medium">
+                                <X className="w-2.5 h-2.5" /> {j.nama} <span className="text-rose-400">(wajib)</span>
+                              </span>
+                            ))}
+                            {r.opsionalMissing.map(j => (
+                              <span key={j.id} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
+                                – {j.nama} <span className="text-slate-400">(opsional)</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sudah Lengkap */}
+                {sudahLengkap.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-slate-700 text-sm mb-2 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      File Lengkap ({sudahLengkap.length})
+                    </h3>
+                    <div className="space-y-1.5">
+                      {sudahLengkap.map(r => (
+                        <div key={r.guru.id} className="flex items-center gap-3 p-2.5 border border-emerald-100 rounded-xl bg-emerald-50/50">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span className="font-medium text-sm text-slate-700 flex-1">{r.guru.nama_lengkap}</span>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.guru.jabatan === 'Tendik' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {r.guru.jabatan}
+                          </span>
+                          <span className="text-xs text-slate-400">{(r.guru.file_guru || []).length} file</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Import Modal */}
       {showImportModal && (
