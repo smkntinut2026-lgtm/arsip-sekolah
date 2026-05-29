@@ -228,21 +228,21 @@ export default function GuruPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="page-title">Data Guru & Tendik</h1>
+          <h1 className="page-title">Data Guru &amp; Tendik</h1>
           <p className="text-slate-500 text-sm mt-0.5">{guruList.length} guru & tendik terdaftar</p>
         </div>
         {isAdmin && (
           <div className="flex flex-wrap gap-2">
             {selected.size > 0 && (
               <button onClick={handleBulkDelete} className="btn-secondary text-sm text-rose-600 border-rose-200 hover:bg-rose-50">
-                <Trash2 className="w-4 h-4" /> Hapus {selected.size} Terpilih
+                <Trash2 className="w-4 h-4" /> Hapus {selected.size}
               </button>
             )}
             <button onClick={() => setShowImportModal(true)} className="btn-secondary text-sm">
-              <Import className="w-4 h-4" /> Import Excel
+              <Import className="w-4 h-4" /> Import
             </button>
             <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '' }); setShowAddModal(true) }} className="btn-primary text-sm">
-              <Plus className="w-4 h-4" /> Tambah Guru & Tendik
+              <Plus className="w-4 h-4" /> Tambah
             </button>
           </div>
         )}
@@ -256,7 +256,7 @@ export default function GuruPage() {
             <input className="input pl-9" placeholder="Cari nama atau NIK..." value={search}
               onChange={e => setSearch(e.target.value)} />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <select className="input w-auto" value={filterStatus}
               onChange={e => setFilterStatus(e.target.value as any)}>
               <option value="semua">Semua Status</option>
@@ -293,9 +293,9 @@ export default function GuruPage() {
                   </th>
                 )}
                 <th>Nama Guru / Tendik</th>
-                <th>NIK</th>
-                <th>Pendidikan</th>
-                <th>File</th>
+                <th className="hidden sm:table-cell">NIK</th>
+                <th className="hidden md:table-cell">Pendidikan</th>
+                <th className="hidden sm:table-cell">File</th>
                 <th>Status</th>
                 <th>Aksi</th>
               </tr>
@@ -334,7 +334,8 @@ export default function GuruPage() {
                     )}
                     <td>
                       <div className="font-semibold text-slate-800">{guru.nama_lengkap}</div>
-                      {guru.gelar && <div className="text-xs text-slate-400 mb-1">{guru.gelar}</div>}
+                      {guru.gelar && <div className="text-xs text-slate-400">{guru.gelar}</div>}
+                      <div className="text-xs text-slate-400 sm:hidden">{guru.nik || ''}</div>
                       {jenisFileList.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {jenisFileList.map(j => {
@@ -354,9 +355,9 @@ export default function GuruPage() {
                         </div>
                       )}
                     </td>
-                    <td className="text-slate-600 font-mono text-sm">{guru.nik || '-'}</td>
-                    <td>{guru.pendidikan_terakhir || '-'}</td>
-                    <td>
+                    <td className="hidden sm:table-cell text-slate-600 font-mono text-sm">{guru.nik || '-'}</td>
+                    <td className="hidden md:table-cell">{guru.pendidikan_terakhir || '-'}</td>
+                    <td className="hidden sm:table-cell">
                       <div className="flex items-center gap-1.5">
                         <Paperclip className="w-3.5 h-3.5 text-slate-400" />
                         <span className="text-sm font-medium">{fileCount}</span>
@@ -370,7 +371,7 @@ export default function GuruPage() {
                         </span>
                       ) : (
                         <span className="badge-yellow flex items-center gap-1 w-fit">
-                          <AlertTriangle className="w-3 h-3" /> Belum Lengkap
+                          <AlertTriangle className="w-3 h-3" /> Belum
                         </span>
                       )}
                     </td>
