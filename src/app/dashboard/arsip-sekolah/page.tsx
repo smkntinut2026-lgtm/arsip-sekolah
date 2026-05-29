@@ -633,8 +633,8 @@ function FileTable({
               </th>
             )}
             <th>Nama File</th>
-            <th>Ukuran</th>
-            <th>Tanggal Upload</th>
+            <th className="hidden sm:table-cell">Ukuran</th>
+            <th className="hidden md:table-cell">Tanggal Upload</th>
             <th>Aksi</th>
           </tr>
         </thead>
@@ -659,11 +659,14 @@ function FileTable({
                     {file.deskripsi && (
                       <p className="text-xs text-slate-400 truncate max-w-xs">{file.deskripsi}</p>
                     )}
+                    <p className="text-xs text-slate-400 sm:hidden mt-0.5">
+                      {formatBytes(file.file_size)} &middot; {format(new Date(file.created_at), 'dd MMM yyyy', { locale: localeId })}
+                    </p>
                   </div>
                 </div>
               </td>
-              <td className="text-sm text-slate-500">{formatBytes(file.file_size)}</td>
-              <td className="text-sm text-slate-500">
+              <td className="hidden sm:table-cell text-sm text-slate-500">{formatBytes(file.file_size)}</td>
+              <td className="hidden md:table-cell text-sm text-slate-500">
                 {format(new Date(file.created_at), 'dd MMM yyyy', { locale: localeId })}
               </td>
               <td>
