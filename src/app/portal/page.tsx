@@ -733,7 +733,7 @@ function GuruCard({ guru, expandedId, onToggle, onPreview, onDownload, onClickUp
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-3">
+        <div className={`border-t px-4 pb-4 pt-3 space-y-3 ${isTendik ? 'border-amber-100 bg-amber-50/60' : 'border-blue-100 bg-slate-50/80'}`}>
           {/* Pesan ajakan upload */}
           <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
             <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
@@ -787,7 +787,7 @@ function FileRow({ nama, fileUrl, fileType, fileSize, createdAt, jenisNama, uplo
 }) {
   const isFromPortal = uploadedBy === null || uploadedBy === undefined
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary-200 transition-colors">
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-primary-200 transition-colors shadow-sm">
       <span className="text-xl flex-shrink-0">{getFileIcon(fileType)}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
