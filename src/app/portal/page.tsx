@@ -41,6 +41,7 @@ export default function PortalPage() {
   const [search, setSearch] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [filterKategori, setFilterKategori] = useState('semua')
+  const [filterKelas, setFilterKelas] = useState('semua')
   const [previewFile, setPreviewFile] = useState<{ nama: string; url: string; type: string } | null>(null)
 
   useEffect(() => {
@@ -93,11 +94,13 @@ export default function PortalPage() {
     g.nik?.includes(search)
   )
 
-  const filteredSiswa = siswaList.filter(s =>
-    s.nama_lengkap.toLowerCase().includes(search.toLowerCase()) ||
-    s.nisn?.includes(search) ||
-    s.kelas?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredSiswa = siswaList
+    .filter(s => filterKelas === 'semua' || s.kelas === filterKelas)
+    .filter(s =>
+      s.nama_lengkap.toLowerCase().includes(search.toLowerCase()) ||
+      s.nisn?.includes(search) ||
+      s.kelas?.toLowerCase().includes(search.toLowerCase())
+    )
 
   const allKategori = Array.from(new Set(arsipList.map(a => a.kategori))).filter(Boolean)
 
@@ -107,6 +110,8 @@ export default function PortalPage() {
      a.kategori.toLowerCase().includes(search.toLowerCase()) ||
      a.deskripsi?.toLowerCase().includes(search.toLowerCase()))
   )
+
+  const allKelas = Array.from(new Set(siswaList.map(s => s.kelas).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
 
   const arsipByKategori: Record<string, ArsipSekolah[]> = {}
   filteredArsip.forEach(a => {
@@ -165,7 +170,7 @@ export default function PortalPage() {
             ] as const).map(tab => (
               <button
                 key={tab.key}
-                onClick={() => { setActiveTab(tab.key); setSearch(''); setFilterKategori('semua') }}
+                onClick={() => { setActiveTab(tab.key); setSearch(''); setFilterKategori('semua'); setFilterKelas('semua') }}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                   activeTab === tab.key
                     ? `${tab.color} text-white shadow-md`
@@ -200,6 +205,12 @@ export default function PortalPage() {
               <select className="input w-auto" value={filterKategori} onChange={e => setFilterKategori(e.target.value)}>
                 <option value="semua">Semua Kategori</option>
                 {allKategori.map(k => <option key={k} value={k}>{k}</option>)}
+              </select>
+            )}
+            {activeTab === 'siswa' && allKelas.length > 0 && (
+              <select className="input w-auto" value={filterKelas} onChange={e => setFilterKelas(e.target.value)}>
+                <option value="semua">Semua Kelas</option>
+                {allKelas.map(k => <option key={k} value={k}>Kelas {k}</option>)}
               </select>
             )}
           </div>
