@@ -36,7 +36,7 @@ export default function GuruPage() {
   // Form
   const [form, setForm] = useState({
     nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '',
-    pendidikan_terakhir: '', gelar: ''
+    pendidikan_terakhir: '', gelar: '', no_telepon: ''
   })
 
   // Bulk delete
@@ -110,7 +110,7 @@ export default function GuruPage() {
     }
     setShowAddModal(false)
     setShowEditModal(false)
-    setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '' })
+    setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '' })
     fetchData()
   }
 
@@ -260,7 +260,7 @@ export default function GuruPage() {
             <button onClick={() => setShowImportModal(true)} className="btn-secondary text-sm">
               <Import className="w-4 h-4" /> Import Excel
             </button>
-            <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '' }); setShowAddModal(true) }} className="btn-primary text-sm">
+            <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '' }); setShowAddModal(true) }} className="btn-primary text-sm">
               <Plus className="w-4 h-4" /> Tambah Guru
             </button>
           </div>
@@ -373,7 +373,15 @@ export default function GuruPage() {
                         </div>
                       )}
                     </td>
-                    <td className="text-slate-600 font-mono text-sm">{guru.nik || '-'}</td>
+                    <td className="text-slate-600 font-mono text-sm">
+                      <div>{guru.nik || '-'}</div>
+                      {guru.no_telepon && (
+                        <a href={`https://wa.me/${guru.no_telepon.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-emerald-600 hover:underline flex items-center gap-1 mt-0.5">
+                          📱 {guru.no_telepon}
+                        </a>
+                      )}
+                    </td>
                     <td>{guru.pendidikan_terakhir || '-'}</td>
                     <td>
                       <div className="flex items-center gap-1.5">
@@ -409,7 +417,7 @@ export default function GuruPage() {
                                 setForm({
                                   nama_lengkap: guru.nama_lengkap, nik: guru.nik,
                                   tempat_lahir: guru.tempat_lahir, tanggal_lahir: guru.tanggal_lahir || '',
-                                  pendidikan_terakhir: guru.pendidikan_terakhir, gelar: guru.gelar
+                                  pendidikan_terakhir: guru.pendidikan_terakhir, gelar: guru.gelar, no_telepon: guru.no_telepon || ''
                                 })
                                 setShowEditModal(true)
                               }}
@@ -466,12 +474,16 @@ export default function GuruPage() {
                   <label className="label">Tanggal Lahir</label>
                   <input className="input" type="date" value={form.tanggal_lahir} onChange={e => setForm({ ...form, tanggal_lahir: e.target.value })} />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className="label">Pendidikan Terakhir</label>
                   <select className="input" value={form.pendidikan_terakhir} onChange={e => setForm({ ...form, pendidikan_terakhir: e.target.value })}>
                     <option value="">Pilih pendidikan</option>
                     {['SMA/SMK', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2', 'S3'].map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
+                </div>
+                <div>
+                  <label className="label">No. Telepon / WhatsApp</label>
+                  <input className="input" value={form.no_telepon} onChange={e => setForm({ ...form, no_telepon: e.target.value })} placeholder="Contoh: 08123456789" />
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
