@@ -6,7 +6,7 @@ import { useApp } from '../context'
 import {
   Plus, Search, Upload, Download, Trash2, Edit3, Eye,
   AlertTriangle, CheckCircle2, FileText, X, Filter,
-  ArrowUpDown, Import, FileDown, ChevronDown, Paperclip
+  ArrowUpDown, Import, FileDown, ChevronDown, Paperclip, ExternalLink
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { DataGuru, JenisFile, FileGuru } from '@/types'
@@ -48,10 +48,10 @@ export default function GuruPage() {
 
   async function handleBulkDelete() {
     if (selected.size === 0) return
-    if (!confirm(`Hapus ${selected.size} data guru & tendik beserta semua filenya?`)) return
+    if (!confirm(`Hapus ${selected.size} data guru beserta semua filenya?`)) return
     const ids = Array.from(selected)
     await supabase.from('data_guru').delete().in('id', ids)
-    toast.success(`${ids.length} data guru & tendik berhasil dihapus`)
+    toast.success(`${ids.length} data guru berhasil dihapus`)
     setSelected(new Set())
     fetchData()
   }
@@ -106,7 +106,7 @@ export default function GuruPage() {
     } else {
       const { error } = await supabase.from('data_guru').insert(payload)
       if (error) { toast.error('Gagal menyimpan'); return }
-      toast.success('Guru / Tendik berhasil ditambahkan')
+      toast.success('Guru berhasil ditambahkan')
     }
     setShowAddModal(false)
     setShowEditModal(false)
@@ -115,7 +115,7 @@ export default function GuruPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Hapus data guru & tendik ini beserta semua filenya?')) return
+    if (!confirm('Hapus data guru ini beserta semua filenya?')) return
     await supabase.from('data_guru').delete().eq('id', id)
     toast.success('Data berhasil dihapus')
     fetchData()
@@ -173,14 +173,33 @@ export default function GuruPage() {
     fetchData()
   }
 
+
+  async function handleDownload(fileUrl: string, namaFile: string) {
+    try {
+      const res = await fetch(fileUrl)
+      if (!res.ok) throw new Error('Gagal mengambil file')
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = namaFile
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      toast.error('Gagal mendownload: ' + err.message)
+    }
+  }
+
   function downloadTemplate() {
     const ws = XLSX.utils.aoa_to_sheet([
       ['Nama Lengkap', 'NIK', 'Tempat Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Pendidikan Terakhir', 'Gelar'],
       ['Contoh: Ahmad Fauzi, S.Pd', '1234567890123456', 'Jakarta', '1985-05-15', 'S1', 'S.Pd'],
     ])
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Guru & Tendik')
-    XLSX.writeFile(wb, 'template_import_guru_tendik.xlsx')
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Guru')
+    XLSX.writeFile(wb, 'template_import_guru.xlsx')
   }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -228,21 +247,21 @@ export default function GuruPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="page-title">Data Guru &amp; Tendik</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{guruList.length} guru & tendik terdaftar</p>
+          <h1 className="page-title">Data Guru</h1>
+          <p className="text-slate-500 text-sm mt-0.5">{guruList.length} guru terdaftar</p>
         </div>
         {isAdmin && (
           <div className="flex flex-wrap gap-2">
             {selected.size > 0 && (
               <button onClick={handleBulkDelete} className="btn-secondary text-sm text-rose-600 border-rose-200 hover:bg-rose-50">
-                <Trash2 className="w-4 h-4" /> Hapus {selected.size}
+                <Trash2 className="w-4 h-4" /> Hapus {selected.size} Terpilih
               </button>
             )}
             <button onClick={() => setShowImportModal(true)} className="btn-secondary text-sm">
-              <Import className="w-4 h-4" /> Import
+              <Import className="w-4 h-4" /> Import Excel
             </button>
             <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '' }); setShowAddModal(true) }} className="btn-primary text-sm">
-              <Plus className="w-4 h-4" /> Tambah
+              <Plus className="w-4 h-4" /> Tambah Guru
             </button>
           </div>
         )}
@@ -256,7 +275,7 @@ export default function GuruPage() {
             <input className="input pl-9" placeholder="Cari nama atau NIK..." value={search}
               onChange={e => setSearch(e.target.value)} />
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2">
             <select className="input w-auto" value={filterStatus}
               onChange={e => setFilterStatus(e.target.value as any)}>
               <option value="semua">Semua Status</option>
@@ -292,10 +311,10 @@ export default function GuruPage() {
                     />
                   </th>
                 )}
-                <th>Nama Guru / Tendik</th>
-                <th className="hidden sm:table-cell">NIK</th>
-                <th className="hidden md:table-cell">Pendidikan</th>
-                <th className="hidden sm:table-cell">File</th>
+                <th>Nama Guru</th>
+                <th>NIK</th>
+                <th>Pendidikan</th>
+                <th>File</th>
                 <th>Status</th>
                 <th>Aksi</th>
               </tr>
@@ -314,7 +333,7 @@ export default function GuruPage() {
                   <td colSpan={6} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center gap-2">
                       <Search className="w-8 h-8 text-slate-300" />
-                      <p>Tidak ada data guru & tendik</p>
+                      <p>Tidak ada data guru</p>
                     </div>
                   </td>
                 </tr>
@@ -334,8 +353,7 @@ export default function GuruPage() {
                     )}
                     <td>
                       <div className="font-semibold text-slate-800">{guru.nama_lengkap}</div>
-                      {guru.gelar && <div className="text-xs text-slate-400">{guru.gelar}</div>}
-                      <div className="text-xs text-slate-400 sm:hidden">{guru.nik || ''}</div>
+                      {guru.gelar && <div className="text-xs text-slate-400 mb-1">{guru.gelar}</div>}
                       {jenisFileList.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {jenisFileList.map(j => {
@@ -355,9 +373,9 @@ export default function GuruPage() {
                         </div>
                       )}
                     </td>
-                    <td className="hidden sm:table-cell text-slate-600 font-mono text-sm">{guru.nik || '-'}</td>
-                    <td className="hidden md:table-cell">{guru.pendidikan_terakhir || '-'}</td>
-                    <td className="hidden sm:table-cell">
+                    <td className="text-slate-600 font-mono text-sm">{guru.nik || '-'}</td>
+                    <td>{guru.pendidikan_terakhir || '-'}</td>
+                    <td>
                       <div className="flex items-center gap-1.5">
                         <Paperclip className="w-3.5 h-3.5 text-slate-400" />
                         <span className="text-sm font-medium">{fileCount}</span>
@@ -371,7 +389,7 @@ export default function GuruPage() {
                         </span>
                       ) : (
                         <span className="badge-yellow flex items-center gap-1 w-fit">
-                          <AlertTriangle className="w-3 h-3" /> Belum
+                          <AlertTriangle className="w-3 h-3" /> Belum Lengkap
                         </span>
                       )}
                     </td>
@@ -420,7 +438,7 @@ export default function GuruPage() {
           <div className="modal-content">
             <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
               <h2 className="font-display font-bold text-lg">
-                {showEditModal ? 'Edit Data Guru & Tendik' : 'Tambah Guru & Tendik Baru'}
+                {showEditModal ? 'Edit Data Guru' : 'Tambah Guru Baru'}
               </h2>
               <button onClick={() => { setShowAddModal(false); setShowEditModal(false) }} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
                 <X className="w-4 h-4" />
@@ -430,7 +448,7 @@ export default function GuruPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="label">Nama Lengkap *</label>
-                  <input className="input" value={form.nama_lengkap} onChange={e => setForm({ ...form, nama_lengkap: e.target.value })} placeholder="Nama lengkap guru / tendik" />
+                  <input className="input" value={form.nama_lengkap} onChange={e => setForm({ ...form, nama_lengkap: e.target.value })} placeholder="Nama lengkap guru" />
                 </div>
                 <div>
                   <label className="label">NIK</label>
@@ -472,7 +490,7 @@ export default function GuruPage() {
             <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
               <div>
                 <h2 className="font-display font-bold text-lg">{selectedGuru.nama_lengkap}</h2>
-                <p className="text-white/70 text-sm">{selectedGuru.gelar && `${selectedGuru.gelar} · `}Arsip File Guru & Tendik</p>
+                <p className="text-white/70 text-sm">{selectedGuru.gelar && `${selectedGuru.gelar} · `}Arsip File Guru</p>
               </div>
               <button onClick={() => setShowFileModal(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
                 <X className="w-4 h-4" />
@@ -511,17 +529,26 @@ export default function GuruPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-slate-800 truncate">{file.nama_file}</p>
-                          <p className="text-xs text-slate-400">
-                            {file.jenis_file?.nama && `${file.jenis_file.nama} · `}
-                            {formatBytes(file.file_size)} · {format(new Date(file.created_at), 'dd MMM yyyy', { locale: localeId })}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            {file.jenis_file?.nama && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary-50 text-primary-700 text-xs font-medium border border-primary-100">
+                                {file.jenis_file.nama}
+                              </span>
+                            )}
+                            <span className="text-xs text-slate-400">{formatBytes(file.file_size)}</span>
+                            <span className="text-xs text-slate-300">·</span>
+                            <span className="text-xs text-slate-400">{format(new Date(file.created_at), 'dd MMM yyyy', { locale: localeId })}</span>
+                          </div>
                         </div>
-                        <div className="flex gap-1">
-                          <a href={file.file_url} target="_blank" className="btn-icon" title="Download">
-                            <Download className="w-4 h-4" />
+                        <div className="flex gap-1 flex-shrink-0">
+                          <a href={file.file_url} target="_blank" rel="noopener noreferrer" className="btn-icon" title="Lihat / Preview">
+                            <ExternalLink className="w-4 h-4" />
                           </a>
+                          <button onClick={() => handleDownload(file.file_url, file.nama_file)} className="btn-icon text-primary-500 hover:bg-primary-50 hover:text-primary-700" title="Download">
+                            <Download className="w-4 h-4" />
+                          </button>
                           {isAdmin && (
-                            <button onClick={() => handleDeleteFile(file)} className="btn-icon text-rose-400 hover:bg-rose-50 hover:text-rose-600">
+                            <button onClick={() => handleDeleteFile(file)} className="btn-icon text-rose-400 hover:bg-rose-50 hover:text-rose-600" title="Hapus">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           )}
@@ -605,7 +632,7 @@ export default function GuruPage() {
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowImportModal(false) }}>
           <div className="modal-content">
             <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
-              <h2 className="font-display font-bold text-lg">Import Data Guru & Tendik</h2>
+              <h2 className="font-display font-bold text-lg">Import Data Guru</h2>
               <button onClick={() => setShowImportModal(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
                 <X className="w-4 h-4" />
               </button>
