@@ -281,6 +281,16 @@ export default function PortalPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6">
+        {/* ─── Banner Sumber Dokumen ──────────────────────────────────────────── */}
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 text-sm text-amber-800">
+          <ShieldAlert className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-500" />
+          <p>
+            Portal ini memuat dokumen yang dikelola oleh administrator serta dokumen yang dikirimkan
+            secara mandiri oleh pengguna terdaftar. Keabsahan dokumen pihak ketiga menjadi tanggung
+            jawab pengunggah masing-masing.
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             { label: 'Arsip Sekolah', value: arsipList.length, icon: FolderArchive, color: 'from-violet-500 to-purple-600' },
@@ -373,7 +383,18 @@ export default function PortalPage() {
                     <div key={file.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
                       <span className="text-xl flex-shrink-0">{getFileIcon(file.file_type)}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-slate-800 truncate">{file.nama_file}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-sm text-slate-800 truncate">{file.nama_file}</p>
+                          {file.uploaded_by ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex-shrink-0">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Admin
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 flex-shrink-0">
+                              <Upload className="w-2.5 h-2.5" /> Pengguna
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-400">
                           {formatBytes(file.file_size)} · {format(new Date(file.created_at), 'dd MMM yyyy', { locale: localeId })}
                           {file.deskripsi && ` · ${file.deskripsi}`}
@@ -488,7 +509,7 @@ export default function PortalPage() {
                       ) : (
                         <div className="space-y-2">
                           {files.map((file: FileSiswa) => (
-                            <FileRow key={file.id} nama={file.nama_file} fileUrl={file.file_url} fileType={file.file_type} fileSize={file.file_size} createdAt={file.created_at} jenisNama={file.jenis_file?.nama} onPreview={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} onDownload={() => handleDownload(file.file_url, file.nama_file)} />
+                            <FileRow key={file.id} nama={file.nama_file} fileUrl={file.file_url} fileType={file.file_type} fileSize={file.file_size} createdAt={file.created_at} jenisNama={file.jenis_file?.nama} uploadedBy={file.uploaded_by} onPreview={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} onDownload={() => handleDownload(file.file_url, file.nama_file)} />
                           ))}
                         </div>
                       )}
@@ -751,6 +772,7 @@ function GuruCard({ guru, expandedIds, onToggle, onPreview, onDownload, onClickU
                   fileSize={file.file_size}
                   createdAt={file.created_at}
                   jenisNama={file.jenis_file?.nama}
+                  uploadedBy={file.uploaded_by}
                   onPreview={() => onPreview({ nama: file.nama_file, url: file.file_url, type: file.file_type })}
                   onDownload={() => onDownload(file.file_url, file.nama_file)}
                 />
@@ -764,14 +786,26 @@ function GuruCard({ guru, expandedIds, onToggle, onPreview, onDownload, onClickU
 }
 
 // ─── Komponen FileRow ─────────────────────────────────────────────────────────
-function FileRow({ nama, fileUrl, fileType, fileSize, createdAt, jenisNama, onPreview, onDownload }: {
-  nama: string; fileUrl: string; fileType: string; fileSize: number; createdAt: string; jenisNama?: string; onPreview: () => void; onDownload: () => void
+function FileRow({ nama, fileUrl, fileType, fileSize, createdAt, jenisNama, uploadedBy, onPreview, onDownload }: {
+  nama: string; fileUrl: string; fileType: string; fileSize: number; createdAt: string; jenisNama?: string; uploadedBy?: string | null; onPreview: () => void; onDownload: () => void
 }) {
+  const isFromPortal = uploadedBy === null || uploadedBy === undefined
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary-200 transition-colors">
       <span className="text-xl flex-shrink-0">{getFileIcon(fileType)}</span>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm text-slate-800 truncate">{nama}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-sm text-slate-800 truncate">{nama}</p>
+          {isFromPortal ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 flex-shrink-0">
+              <Upload className="w-2.5 h-2.5" /> Pengguna
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex-shrink-0">
+              <CheckCircle2 className="w-2.5 h-2.5" /> Admin
+            </span>
+          )}
+        </div>
         <p className="text-xs text-slate-400">
           {jenisNama && `${jenisNama} · `}
           {formatBytes(fileSize)} · {format(new Date(createdAt), 'dd MMM yyyy', { locale: localeId })}
