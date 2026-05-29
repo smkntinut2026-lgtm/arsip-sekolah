@@ -119,12 +119,25 @@ export default function DashboardPage() {
       supabase.rpc('count_siswa_belum_lengkap'),
     ])
 
+    // Hitung storage: coba RPC dulu, jika gagal/nol fallback ke query langsung
+    let storageUsedBytes: number = storageResult.data ?? 0
+    if (!storageUsedBytes) {
+      // RPC mungkin belum dibuat — fallback: jumlahkan file_size langsung dari tabel
+      const [guruFiles, siswaFiles] = await Promise.all([
+        supabase.from('file_guru').select('file_size'),
+        supabase.from('file_siswa').select('file_size'),
+      ])
+      const guruBytes = (guruFiles.data || []).reduce((sum: number, f: any) => sum + (f.file_size || 0), 0)
+      const siswaBytes = (siswaFiles.data || []).reduce((sum: number, f: any) => sum + (f.file_size || 0), 0)
+      storageUsedBytes = guruBytes + siswaBytes
+    }
+
     const newStats: Stats = {
       totalGuru: guru.count || 0,
       totalSiswa: siswa.count || 0,
       totalFileGuru: fileGuruCount.count || 0,
       totalFileSiswa: fileSiswaCount.count || 0,
-      storageUsedBytes: storageResult.data ?? 0,
+      storageUsedBytes,
       guruBelumLengkap: guruBelumResult.data ?? 0,
       siswaBelumLengkap: siswaBelumResult.data ?? 0,
     }
