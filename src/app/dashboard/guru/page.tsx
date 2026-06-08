@@ -37,7 +37,7 @@ export default function GuruPage() {
   // Form
   const [form, setForm] = useState({
     nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '',
-    pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru'
+    pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru', status_induk: 'Induk'
   })
 
   // Rekap kelengkapan
@@ -116,7 +116,7 @@ export default function GuruPage() {
     }
     setShowAddModal(false)
     setShowEditModal(false)
-    setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru' })
+    setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru', status_induk: 'Induk' })
     fetchData()
   }
 
@@ -422,7 +422,13 @@ export default function GuruPage() {
         <div>
           <h1 className="page-title">Data Guru & Tendik</h1>
           <p className="text-slate-500 text-sm mt-0.5">
-            {guruList.filter(g => g.jabatan === 'Guru').length} Guru · {guruList.filter(g => g.jabatan === 'Tendik').length} Tendik
+            {guruList.filter(g => g.jabatan === 'Guru').length} Guru
+            <span className="text-slate-300 mx-1">·</span>
+            {guruList.filter(g => g.jabatan === 'Tendik').length} Tendik
+            <span className="text-slate-300 mx-2">|</span>
+            <span className="text-emerald-600">{guruList.filter(g => (g.status_induk || 'Induk') === 'Induk').length} Induk</span>
+            <span className="text-slate-300 mx-1">·</span>
+            <span className="text-rose-500">{guruList.filter(g => g.status_induk === 'Non Induk').length} Non Induk</span>
           </p>
         </div>
         {isAdmin && (
@@ -438,7 +444,7 @@ export default function GuruPage() {
             <button onClick={() => setShowRekapModal(true)} className="btn-secondary text-sm text-violet-700 border-violet-200 hover:bg-violet-50">
               <FileDown className="w-4 h-4" /> Rekap Kelengkapan
             </button>
-            <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru' }); setShowAddModal(true) }} className="btn-primary text-sm">
+            <button onClick={() => { setForm({ nama_lengkap: '', nik: '', tempat_lahir: '', tanggal_lahir: '', pendidikan_terakhir: '', gelar: '', no_telepon: '', jabatan: 'Guru', status_induk: 'Induk' }); setShowAddModal(true) }} className="btn-primary text-sm">
               <Plus className="w-4 h-4" /> Tambah Pegawai
             </button>
           </div>
@@ -543,6 +549,11 @@ export default function GuruPage() {
                             ? 'bg-amber-100 text-amber-700'
                             : 'bg-blue-100 text-blue-700'
                         }`}>{guru.jabatan}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                          guru.status_induk === 'Non Induk'
+                            ? 'bg-rose-100 text-rose-600'
+                            : 'bg-emerald-100 text-emerald-700'
+                        }`}>{guru.status_induk || 'Induk'}</span>
                       </div>
                       {guru.gelar && <div className="text-xs text-slate-400 mb-1">{guru.gelar}</div>}
                       {jenisFileList.length > 0 && (
@@ -609,7 +620,8 @@ export default function GuruPage() {
                                   nama_lengkap: guru.nama_lengkap, nik: guru.nik,
                                   tempat_lahir: guru.tempat_lahir, tanggal_lahir: guru.tanggal_lahir || '',
                                   pendidikan_terakhir: guru.pendidikan_terakhir, gelar: guru.gelar,
-                                  no_telepon: guru.no_telepon || '', jabatan: guru.jabatan || 'Guru'
+                                  no_telepon: guru.no_telepon || '', jabatan: guru.jabatan || 'Guru',
+                                  status_induk: guru.status_induk || 'Induk'
                                 })
                                 setShowEditModal(true)
                               }}
@@ -655,6 +667,13 @@ export default function GuruPage() {
                   <select className="input" value={form.jabatan} onChange={e => setForm({ ...form, jabatan: e.target.value })}>
                     <option value="Guru">Guru</option>
                     <option value="Tendik">Tendik (Tenaga Kependidikan)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Status Induk *</label>
+                  <select className="input" value={form.status_induk} onChange={e => setForm({ ...form, status_induk: e.target.value })}>
+                    <option value="Induk">Induk</option>
+                    <option value="Non Induk">Non Induk</option>
                   </select>
                 </div>
                 <div>
