@@ -36,6 +36,7 @@ export interface DataGuru {
   gelar: string
   no_telepon: string
   jabatan: 'Guru' | 'Tendik'  // ✅ v3: kolom jabatan
+  status_induk: 'Induk' | 'Non Induk'  // ✅ v4: status induk
   created_at: string
   updated_at: string
   file_guru?: FileGuru[]
