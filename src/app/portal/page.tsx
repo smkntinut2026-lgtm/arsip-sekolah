@@ -292,8 +292,8 @@ export default function PortalPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             { label: 'Arsip Sekolah', value: arsipList.length, icon: FolderArchive, color: 'from-violet-500 to-purple-600' },
-            { label: 'Guru', value: guruList.filter(g => g.jabatan !== 'Tendik').length, sub: `${guruList.filter(g=>g.jabatan!=='Tendik').reduce((s,g)=>s+(g.file_guru?.length||0),0)} file`, icon: GraduationCap, color: 'from-blue-500 to-primary-600' },
-            { label: 'Tendik', value: guruList.filter(g => g.jabatan === 'Tendik').length, sub: `${guruList.filter(g=>g.jabatan==='Tendik').reduce((s,g)=>s+(g.file_guru?.length||0),0)} file`, icon: GraduationCap, color: 'from-amber-500 to-orange-500' },
+            { label: 'Guru', value: guruList.filter(g => g.jabatan !== 'Tendik').length, sub: `${guruList.filter(g=>g.jabatan!=='Tendik'&&(g.status_induk||'Induk')==='Induk').length} Induk · ${guruList.filter(g=>g.jabatan!=='Tendik'&&g.status_induk==='Non Induk').length} Non Induk`, icon: GraduationCap, color: 'from-blue-500 to-primary-600' },
+            { label: 'Tendik', value: guruList.filter(g => g.jabatan === 'Tendik').length, sub: `${guruList.filter(g=>g.jabatan==='Tendik'&&(g.status_induk||'Induk')==='Induk').length} Induk · ${guruList.filter(g=>g.jabatan==='Tendik'&&g.status_induk==='Non Induk').length} Non Induk`, icon: GraduationCap, color: 'from-amber-500 to-orange-500' },
             { label: 'Siswa', value: siswaList.length, sub: `${totalSiswaFiles} file`, icon: BookOpen, color: 'from-emerald-500 to-teal-600' },
           ].map(s => (
             <div key={s.label} className="card p-4">
@@ -427,6 +427,12 @@ export default function PortalPage() {
                     <div className="w-2 h-5 rounded-full bg-blue-500" />
                     <h2 className="font-display font-bold text-slate-700">Guru</h2>
                     <span className="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">{guruOnly.length}</span>
+                    <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full ml-1">
+                      {guruOnly.filter(g => (g.status_induk || 'Induk') === 'Induk').length} Induk
+                    </span>
+                    <span className="text-xs bg-rose-100 text-rose-600 font-semibold px-2 py-0.5 rounded-full">
+                      {guruOnly.filter(g => g.status_induk === 'Non Induk').length} Non Induk
+                    </span>
                   </div>
                   {guruOnly.length === 0 ? (
                     <div className="card p-6 text-center text-slate-400 text-sm">Tidak ada data guru</div>
@@ -453,6 +459,12 @@ export default function PortalPage() {
                     <div className="w-2 h-5 rounded-full bg-amber-500" />
                     <h2 className="font-display font-bold text-slate-700">Tendik</h2>
                     <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">{tendikOnly.length}</span>
+                    <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full ml-1">
+                      {tendikOnly.filter(g => (g.status_induk || 'Induk') === 'Induk').length} Induk
+                    </span>
+                    <span className="text-xs bg-rose-100 text-rose-600 font-semibold px-2 py-0.5 rounded-full">
+                      {tendikOnly.filter(g => g.status_induk === 'Non Induk').length} Non Induk
+                    </span>
                   </div>
                   {tendikOnly.length === 0 ? (
                     <div className="card p-6 text-center text-slate-400 text-sm">Tidak ada data tendik</div>
@@ -724,7 +736,14 @@ function GuruCard({ guru, expandedId, onToggle, onPreview, onDownload, onClickUp
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-white text-sm">{guru.nama_lengkap}</p>
-          <p className="text-xs text-white/70">{guru.gelar && `${guru.gelar} · `}{guru.nik || 'NIK tidak tersedia'}</p>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <p className="text-xs text-white/70">{guru.gelar && `${guru.gelar} · `}{guru.nik || 'NIK tidak tersedia'}</p>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              (guru.status_induk || 'Induk') === 'Induk'
+                ? 'bg-white/30 text-white'
+                : 'bg-black/20 text-white/80'
+            }`}>{guru.status_induk || 'Induk'}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-xs font-semibold px-2 py-1 rounded-full bg-white/25 text-white">
