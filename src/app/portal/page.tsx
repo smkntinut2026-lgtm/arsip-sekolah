@@ -492,7 +492,7 @@ export default function PortalPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filterKategori, setFilterKategori] = useState('semua')
   const [filterKelas, setFilterKelas] = useState('semua')
-  const [previewFile, setPreviewFile] = useState<{ nama: string; url: string; type: string } | null>(null)
+  function openPreview(url: string) { window.open(url, '_blank') }
 
   // Upload states
   const [uploadTargetGuru, setUploadTargetGuru] = useState<DataGuru | null>(null)
@@ -830,7 +830,7 @@ export default function PortalPage() {
                         </p>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} className="btn-icon">
+                        <button onClick={() => openPreview(file.file_url)} className="btn-icon">
                           <Eye className="w-4 h-4" />
                         </button>
                         <button onClick={() => handleDownload(file.file_url, file.nama_file)} className="btn-icon">
@@ -862,7 +862,7 @@ export default function PortalPage() {
                     </div>
                     <div className="space-y-3">
                       {kepsekAktif.map(ks => (
-                        <KepsekCard key={ks.id} ks={ks} expandedId={expandedId} onToggle={toggleExpand} onPreview={setPreviewFile} onDownload={handleDownload} />
+                        <KepsekCard key={ks.id} ks={ks} expandedId={expandedId} onToggle={toggleExpand} onPreview={(f) => openPreview(f.url)} onDownload={handleDownload} />
                       ))}
                     </div>
                   </div>
@@ -876,7 +876,7 @@ export default function PortalPage() {
                     </div>
                     <div className="space-y-3">
                       {kepsekMantan.map(ks => (
-                        <KepsekCard key={ks.id} ks={ks} expandedId={expandedId} onToggle={toggleExpand} onPreview={setPreviewFile} onDownload={handleDownload} />
+                        <KepsekCard key={ks.id} ks={ks} expandedId={expandedId} onToggle={toggleExpand} onPreview={(f) => openPreview(f.url)} onDownload={handleDownload} />
                       ))}
                     </div>
                   </div>
@@ -907,7 +907,7 @@ export default function PortalPage() {
                   ) : (
                     <div className="space-y-2">
                       {guruOnly.map(guru => (
-                        <GuruCard key={guru.id} guru={guru} expandedId={expandedId} onToggle={toggleExpand} onPreview={setPreviewFile} onDownload={handleDownload} onClickUpload={handleClickUpload} checkingStorageFor={checkingStorage ? (uploadTargetGuru?.id ?? null) : null} />
+                        <GuruCard key={guru.id} guru={guru} expandedId={expandedId} onToggle={toggleExpand} onPreview={(f) => openPreview(f.url)} onDownload={handleDownload} onClickUpload={handleClickUpload} checkingStorageFor={checkingStorage ? (uploadTargetGuru?.id ?? null) : null} />
                       ))}
                     </div>
                   )}
@@ -925,7 +925,7 @@ export default function PortalPage() {
                   ) : (
                     <div className="space-y-2">
                       {tendikOnly.map(guru => (
-                        <GuruCard key={guru.id} guru={guru} expandedId={expandedId} onToggle={toggleExpand} onPreview={setPreviewFile} onDownload={handleDownload} onClickUpload={handleClickUpload} checkingStorageFor={checkingStorage ? (uploadTargetGuru?.id ?? null) : null} />
+                        <GuruCard key={guru.id} guru={guru} expandedId={expandedId} onToggle={toggleExpand} onPreview={(f) => openPreview(f.url)} onDownload={handleDownload} onClickUpload={handleClickUpload} checkingStorageFor={checkingStorage ? (uploadTargetGuru?.id ?? null) : null} />
                       ))}
                     </div>
                   )}
@@ -966,7 +966,7 @@ export default function PortalPage() {
                       ) : (
                         <div className="space-y-2">
                           {files.map((file: FileSiswa) => (
-                            <FileRow key={file.id} nama={file.nama_file} fileUrl={file.file_url} fileType={file.file_type} fileSize={file.file_size} createdAt={file.created_at} jenisNama={file.jenis_file?.nama} uploadedBy={file.uploaded_by} onPreview={() => setPreviewFile({ nama: file.nama_file, url: file.file_url, type: file.file_type })} onDownload={() => handleDownload(file.file_url, file.nama_file)} />
+                            <FileRow key={file.id} nama={file.nama_file} fileUrl={file.file_url} fileType={file.file_type} fileSize={file.file_size} createdAt={file.created_at} jenisNama={file.jenis_file?.nama} uploadedBy={file.uploaded_by} onPreview={() => openPreview(file.file_url)} onDownload={() => handleDownload(file.file_url, file.nama_file)} />
                           ))}
                         </div>
                       )}
@@ -1003,33 +1003,7 @@ export default function PortalPage() {
         <p className="text-center text-xs text-slate-400">{profil?.nama_sekolah} · Portal Dokumen Publik</p>
       </footer>
 
-      {/* Modal Preview File */}
-      {previewFile && (
-        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setPreviewFile(null) }}>
-          <div className="modal-content max-w-lg">
-            <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
-              <h2 className="font-display font-bold text-base truncate max-w-xs">{previewFile.nama}</h2>
-              <button onClick={() => setPreviewFile(null)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-6 space-y-3">
-              <div className="text-center py-4">
-                <div className="text-5xl mb-3">{getFileIcon(previewFile.type)}</div>
-                <p className="font-medium text-slate-700">{previewFile.nama}</p>
-              </div>
-              <div className="flex gap-3">
-                <a href={previewFile.url} target="_blank" rel="noopener noreferrer" className="btn-secondary flex-1">
-                  <Eye className="w-4 h-4" /> Buka / Lihat
-                </a>
-                <button onClick={() => handleDownload(previewFile.url, previewFile.nama)} className="btn-primary flex-1">
-                  <Download className="w-4 h-4" /> Download
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Modal Sesi Expired */}
       {sessionExpired && (
