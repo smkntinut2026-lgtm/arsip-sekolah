@@ -6,7 +6,8 @@ import {
   Search, Download, Eye, FileText, GraduationCap, BookOpen,
   School, FolderArchive, ChevronDown, ChevronRight, X, FolderOpen,
   Upload, CheckCircle2, AlertCircle, Loader2, Clock, ShieldAlert,
-  ShieldCheck, Lock, KeyRound, UserCheck, Fingerprint, BadgeCheck
+  ShieldCheck, Lock, KeyRound, UserCheck, Fingerprint, BadgeCheck,
+  Folder, Unlock
 } from 'lucide-react'
 import Image from 'next/image'
 import { format } from 'date-fns'
@@ -60,7 +61,26 @@ interface KepalaSekolahWithFiles extends KepalaSekolah {
   file_kepala_sekolah?: FileKepalaSekolah[]
 }
 
-type ActiveTab = 'arsip' | 'kepsek' | 'guru' | 'siswa'
+// ─── Interface baru untuk Folder Arsip ───────────────────────────────────────
+interface FolderArsipPublic {
+  id: string
+  nama: string
+  deskripsi: string
+  has_password: boolean
+  created_at: string
+  dokumen_folder?: {
+    id: string
+    nama_file: string
+    deskripsi: string
+    file_url: string
+    file_size: number
+    file_type: string
+    created_at: string
+  }[]
+}
+
+// ─── Perbarui tipe tab ────────────────────────────────────────────────────────
+type ActiveTab = 'arsip' | 'folder' | 'kepsek' | 'guru' | 'siswa'
 
 // ─── Layar Verifikasi NPSN ────────────────────────────────────────────────────
 function NPSNGate({ profil, onVerified }: { profil: any; onVerified: () => void }) {
@@ -487,6 +507,14 @@ export default function PortalPage() {
   const [jenisFileList, setJenisFileList] = useState<JenisFile[]>([])
   const [loading, setLoading] = useState(false)
 
+  // ─── State baru untuk Folder Arsip ─────────────────────────────────────────
+  const [folderList, setFolderList] = useState<FolderArsipPublic[]>([])
+  const [unlockedFolders, setUnlockedFolders] = useState<Set<string>>(new Set())
+  const [folderSandiInput, setFolderSandiInput] = useState<Record<string, string>>({})
+  const [folderSandiError, setFolderSandiError] = useState<Record<string, boolean>>({})
+  const [folderSandiLoading, setFolderSandiLoading] = useState<Record<string, boolean>>({})
+  const [openFolderIds, setOpenFolderIds] = useState<Set<string>>(new Set())
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('arsip')
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -527,18 +555,21 @@ export default function PortalPage() {
 
   async function fetchAll() {
     setLoading(true)
-    const [kepsekRes, guruRes, siswaRes, arsipRes, jenisRes] = await Promise.all([
+    const [kepsekRes, guruRes, siswaRes, arsipRes, jenisRes, folderRes] = await Promise.all([
       supabase.from('kepala_sekolah').select('*, file_kepala_sekolah(*, jenis_file(*))').order('is_active', { ascending: false }).order('periode_mulai', { ascending: false }),
       supabase.from('data_guru').select('*, file_guru(*, jenis_file(*))').order('nama_lengkap'),
       supabase.from('data_siswa').select('*, file_siswa(*, jenis_file(*))').order('nama_lengkap'),
       supabase.from('arsip_sekolah').select('*').order('kategori').order('created_at', { ascending: false }),
       supabase.from('jenis_file').select('*').eq('kategori', 'guru').order('urutan'),
+      // PENTING: kolom 'password' sengaja TIDAK di-select untuk keamanan
+      supabase.from('folder_arsip').select('id, nama, deskripsi, has_password, created_at, dokumen_folder(id, nama_file, deskripsi, file_url, file_size, file_type, created_at)').order('created_at', { ascending: false }),
     ])
     setKepsekList(kepsekRes.data || [])
     setGuruList(guruRes.data || [])
     setSiswaList(siswaRes.data || [])
     setArsipList(arsipRes.data || [])
     setJenisFileList(jenisRes.data || [])
+    setFolderList(folderRes.data || [])
     setLoading(false)
   }
 
@@ -621,6 +652,46 @@ export default function PortalPage() {
     setUploading(false)
   }
 
+  // ─── Fungsi Verifikasi Sandi Folder ────────────────────────────────────────
+  async function handleVerifikasiFolderSandi(folder: FolderArsipPublic) {
+    const inputSandi = folderSandiInput[folder.id] || ''
+    if (!inputSandi) return
+
+    setFolderSandiLoading(prev => ({ ...prev, [folder.id]: true }))
+
+    // Fetch password dari Supabase untuk dicocokkan
+    const { data } = await supabase
+      .from('folder_arsip')
+      .select('password')
+      .eq('id', folder.id)
+      .single()
+
+    setFolderSandiLoading(prev => ({ ...prev, [folder.id]: false }))
+
+    if (data?.password === inputSandi) {
+      // Sandi benar → tandai folder sudah terbuka
+      setUnlockedFolders(prev => new Set([...prev, folder.id]))
+      setFolderSandiError(prev => ({ ...prev, [folder.id]: false }))
+      setFolderSandiInput(prev => ({ ...prev, [folder.id]: '' }))
+      // Buka isi folder sekaligus
+      setOpenFolderIds(prev => new Set([...prev, folder.id]))
+      toast.success('Folder berhasil dibuka!')
+    } else {
+      // Sandi salah
+      setFolderSandiError(prev => ({ ...prev, [folder.id]: true }))
+      setFolderSandiInput(prev => ({ ...prev, [folder.id]: '' }))
+      setTimeout(() => setFolderSandiError(prev => ({ ...prev, [folder.id]: false })), 3000)
+    }
+  }
+
+  function toggleFolderOpen(folderId: string) {
+    setOpenFolderIds(prev => {
+      const n = new Set(prev)
+      n.has(folderId) ? n.delete(folderId) : n.add(folderId)
+      return n
+    })
+  }
+
   // ─── Filter ────────────────────────────────────────────────────────────────
   const filteredGuru = guruList.filter(g =>
     g.nama_lengkap.toLowerCase().includes(search.toLowerCase()) || g.nik?.includes(search)
@@ -656,6 +727,11 @@ export default function PortalPage() {
   const kepsekMantan = filteredKepsek.filter(k => !k.is_active)
 
   const totalSiswaFiles = siswaList.reduce((sum, s) => sum + (s.file_siswa?.length || 0), 0)
+
+  const filteredFolder = folderList.filter(f =>
+    f.nama.toLowerCase().includes(search.toLowerCase()) ||
+    f.deskripsi?.toLowerCase().includes(search.toLowerCase())
+  )
 
   // Tampilkan loading sampai profil selesai dimuat
   if (!profilLoaded) {
@@ -738,6 +814,7 @@ export default function PortalPage() {
           <div className="flex flex-wrap gap-2 mb-3">
             {([
               { key: 'arsip', label: 'Arsip Sekolah', icon: FolderArchive, count: arsipList.length, color: 'bg-violet-500' },
+              { key: 'folder', label: 'Folder Arsip', icon: Folder, count: folderList.length, color: 'bg-amber-500' },
               { key: 'kepsek', label: 'Kepala Sekolah', icon: UserCheck, count: kepsekList.length, color: 'bg-purple-600' },
               { key: 'guru', label: 'Guru & Tendik', icon: GraduationCap, count: guruList.length, color: 'bg-primary-500' },
               { key: 'siswa', label: 'Siswa', icon: BookOpen, count: siswaList.length, color: 'bg-emerald-500' },
@@ -764,6 +841,7 @@ export default function PortalPage() {
                 className="input pl-9"
                 placeholder={
                   activeTab === 'arsip' ? 'Cari nama atau kategori file...' :
+                  activeTab === 'folder' ? 'Cari nama folder...' :
                   activeTab === 'kepsek' ? 'Cari nama kepala sekolah atau NIP...' :
                   activeTab === 'guru' ? 'Cari nama guru / tendik atau NIK...' :
                   'Cari nama siswa, NISN, atau kelas...'
@@ -842,6 +920,154 @@ export default function PortalPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+        ) : activeTab === 'folder' ? (
+          // ─── TAB FOLDER ARSIP ─────────────────────────────────────────────
+          <div className="space-y-3">
+            {filteredFolder.length === 0 ? (
+              <div className="card p-10 text-center text-slate-400">
+                <Folder className="w-10 h-10 mx-auto mb-2 text-slate-200" />
+                <p>Belum ada folder arsip</p>
+              </div>
+            ) : filteredFolder.map(folder => {
+              const isUnlocked = !folder.has_password || unlockedFolders.has(folder.id)
+              const isOpen = openFolderIds.has(folder.id)
+              const dokumenList = folder.dokumen_folder || []
+              const isLoadingSandi = folderSandiLoading[folder.id] || false
+              const isError = folderSandiError[folder.id] || false
+
+              return (
+                <div key={folder.id} className="card overflow-hidden">
+                  {/* Header Folder */}
+                  <div
+                    className={`px-5 py-4 flex items-center gap-3 transition-colors ${isUnlocked ? 'cursor-pointer hover:bg-slate-50' : 'cursor-default'}`}
+                    onClick={() => { if (isUnlocked) toggleFolderOpen(folder.id) }}
+                  >
+                    {isUnlocked
+                      ? (isOpen
+                          ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                          : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                        )
+                      : <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                    }
+                    {isOpen
+                      ? <FolderOpen className="w-5 h-5 text-amber-500 shrink-0" />
+                      : <Folder className="w-5 h-5 text-amber-500 shrink-0" />
+                    }
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-slate-800">{folder.nama}</p>
+                        {folder.has_password && !isUnlocked && (
+                          <span className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                            <Lock className="w-3 h-3" /> Bersandi
+                          </span>
+                        )}
+                        {folder.has_password && isUnlocked && (
+                          <span className="flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                            <Unlock className="w-3 h-3" /> Terbuka
+                          </span>
+                        )}
+                      </div>
+                      {folder.deskripsi && (
+                        <p className="text-sm text-slate-500 truncate">{folder.deskripsi}</p>
+                      )}
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {isUnlocked ? `${dokumenList.length} dokumen` : 'Masukkan sandi untuk melihat isi folder'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Form input sandi — hanya tampil jika folder bersandi dan belum terbuka */}
+                  {folder.has_password && !isUnlocked && (
+                    <div className="border-t border-amber-100 px-5 py-4 bg-amber-50/60">
+                      <p className="text-sm font-medium text-amber-800 mb-3 flex items-center gap-2">
+                        <KeyRound className="w-4 h-4" />
+                        Folder ini dilindungi sandi
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          className={`input flex-1 transition-colors ${isError ? 'border-rose-400 bg-rose-50 focus:border-rose-400' : ''}`}
+                          placeholder="Masukkan sandi folder..."
+                          value={folderSandiInput[folder.id] || ''}
+                          onChange={e => {
+                            setFolderSandiInput(prev => ({ ...prev, [folder.id]: e.target.value }))
+                            if (isError) setFolderSandiError(prev => ({ ...prev, [folder.id]: false }))
+                          }}
+                          onKeyDown={e => { if (e.key === 'Enter') handleVerifikasiFolderSandi(folder) }}
+                          disabled={isLoadingSandi}
+                        />
+                        <button
+                          onClick={() => handleVerifikasiFolderSandi(folder)}
+                          disabled={isLoadingSandi || !folderSandiInput[folder.id]}
+                          className="btn-primary px-5 flex items-center gap-2 disabled:opacity-60"
+                        >
+                          {isLoadingSandi
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <Unlock className="w-4 h-4" />
+                          }
+                          {isLoadingSandi ? 'Memeriksa...' : 'Buka'}
+                        </button>
+                      </div>
+                      {isError && (
+                        <p className="text-xs text-rose-500 mt-2 flex items-center gap-1">
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          Sandi salah, silakan coba lagi
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Isi dokumen — hanya tampil jika sudah terbuka dan folder di-expand */}
+                  {isUnlocked && isOpen && (
+                    <div className="border-t border-slate-100">
+                      {dokumenList.length === 0 ? (
+                        <div className="px-5 py-6 text-center">
+                          <FileText className="w-8 h-8 mx-auto mb-2 text-slate-200" />
+                          <p className="text-slate-400 text-sm">Folder ini masih kosong</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-slate-50">
+                          {dokumenList.map(doc => (
+                            <div key={doc.id} className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                              <span className="text-xl shrink-0">{getFileIcon(doc.file_type)}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-slate-800 text-sm">{doc.nama_file}</p>
+                                {doc.deskripsi && (
+                                  <p className="text-xs text-slate-400 truncate">{doc.deskripsi}</p>
+                                )}
+                                <p className="text-xs text-slate-400">
+                                  {formatBytes(doc.file_size)} · {format(new Date(doc.created_at), 'dd MMM yyyy', { locale: localeId })}
+                                </p>
+                              </div>
+                              <div className="flex gap-1 shrink-0">
+                                <a
+                                  href={doc.file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn-icon"
+                                  title="Lihat"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </a>
+                                <button
+                                  onClick={() => handleDownload(doc.file_url, doc.nama_file)}
+                                  className="btn-icon"
+                                  title="Download"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
 
         ) : activeTab === 'kepsek' ? (
@@ -1002,8 +1228,6 @@ export default function PortalPage() {
         </div>
         <p className="text-center text-xs text-slate-400">{profil?.nama_sekolah} · Portal Dokumen Publik</p>
       </footer>
-
-
 
       {/* Modal Sesi Expired */}
       {sessionExpired && (
