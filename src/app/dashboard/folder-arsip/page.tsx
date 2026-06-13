@@ -588,4 +588,51 @@ export default function FolderArsipPage() {
               </div>
               <div>
                 <label className="label">Deskripsi (opsional)</label>
-                <textarea className="input resize-none" rows={2}
+                <textarea className="input resize-none" rows={2} placeholder="Keterangan singkat" value={uploadDeskripsi} onChange={e => setUploadDeskripsi(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">File *</label>
+                <div
+                  className={`drop-zone ${dragOver ? 'drag-over' : ''} cursor-pointer`}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={e => {
+                    e.preventDefault(); setDragOver(false)
+                    const f = e.dataTransfer.files[0]
+                    if (f) { setUploadFile(f); if (!uploadNama) setUploadNama(f.name.replace(/\.[^.]+$/, '')) }
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input ref={fileInputRef} type="file" className="hidden" onChange={e => {
+                    const f = e.target.files?.[0]
+                    if (f) { setUploadFile(f); if (!uploadNama) setUploadNama(f.name.replace(/\.[^.]+$/, '')) }
+                  }} />
+                  {uploadFile ? (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">{getFileIcon(uploadFile.type)}</div>
+                      <p className="font-medium text-slate-700 text-sm">{uploadFile.name}</p>
+                      <p className="text-xs text-slate-400 mt-1">{formatBytes(uploadFile.size)}</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Upload className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-slate-500 text-sm">Klik atau seret file ke sini</p>
+                      <p className="text-xs text-slate-400 mt-1">PDF, Word, Excel, Gambar (max 50MB)</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowUploadDokumen(false)} className="btn-secondary flex-1">Batal</button>
+                <button onClick={handleUploadDokumen} disabled={uploading || !uploadFile} className="btn-primary flex-1">
+                  {uploading ? <div className="spinner" /> : <Upload className="w-4 h-4" />}
+                  {uploading ? 'Mengupload...' : 'Upload'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
