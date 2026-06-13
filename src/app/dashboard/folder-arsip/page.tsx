@@ -389,7 +389,7 @@ export default function FolderArsipPage() {
                               </p>
                             </div>
                             <div className="flex items-center gap-1">
-                              
+                              <a
                                 href={doc.file_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
