@@ -124,3 +124,29 @@ export interface FileKepalaSekolah {
   created_at: string
   jenis_file?: JenisFile
 }
+
+// Folder arsip dengan sandi opsional
+export interface FolderArsip {
+  id: string
+  nama: string
+  deskripsi: string
+  has_password: boolean
+  password?: string | null  // hanya terisi saat admin fetch
+  created_by: string | null
+  created_at: string
+  pengguna?: { nama_lengkap: string }
+  dokumen_folder?: DokumenFolder[]
+}
+
+export interface DokumenFolder {
+  id: string
+  folder_id: string
+  nama_file: string
+  deskripsi: string
+  file_url: string
+  file_size: number
+  file_type: string
+  uploaded_by: string | null
+  created_at: string
+  pengguna?: { nama_lengkap: string }
+}
