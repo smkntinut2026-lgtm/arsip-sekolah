@@ -15,7 +15,7 @@
  * 3. Fetch profil & user dilakukan parallel sekali, disimpan di module-level cache
  * 4. Loading state lebih cepat: skeleton langsung tampil, data menyusul
  */
-
+import { Folder } from 'lucide-react'
 import { useState, useEffect, useTransition, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -45,6 +45,7 @@ const navItems = [
   { href: '/dashboard/arsip-sekolah', label: 'Arsip Sekolah', icon: FolderArchive },
   { href: '/dashboard/portal', label: 'Portal Publik', icon: Link2 },
   { href: '/dashboard/jenis-file', label: 'Jenis File', icon: FileText, adminOnly: true },
+  { href: '/dashboard/folder-arsip', icon: Folder, label: 'Folder Arsip' },
   { href: '/dashboard/pengguna', label: 'Pengguna', icon: UserCog, adminOnly: true },
   { href: '/dashboard/profil', label: 'Profil Sekolah', icon: School, adminOnly: true },
 ]
