@@ -58,6 +58,12 @@ export default function FolderArsipPage() {
   const [editKonfirmasiSandi, setEditKonfirmasiSandi] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
 
+  // Modal: Masukkan Sandi Folder
+  const [showInputSandi, setShowInputSandi] = useState(false)
+  const [sandiTargetFolder, setSandiTargetFolder] = useState<FolderArsip | null>(null)
+  const [inputSandi, setInputSandi] = useState('')
+  const [sandiError, setSandiError] = useState('')
+
   // Modal: Upload Dokumen ke Folder
   const [showUploadDokumen, setShowUploadDokumen] = useState(false)
   const [uploadTargetFolder, setUploadTargetFolder] = useState<FolderArsip | null>(null)
@@ -84,12 +90,33 @@ export default function FolderArsipPage() {
     setLoading(false)
   }
 
-  function toggleFolder(id: string) {
-    setOpenFolders(prev => {
-      const n = new Set(prev)
-      n.has(id) ? n.delete(id) : n.add(id)
-      return n
-    })
+  function toggleFolder(folder: FolderArsip) {
+    const id = folder.id
+    // Kalau sudah terbuka, langsung tutup
+    if (openFolders.has(id)) {
+      setOpenFolders(prev => { const n = new Set(prev); n.delete(id); return n })
+      return
+    }
+    // Folder tidak bersandi → langsung buka
+    if (!folder.has_password) {
+      setOpenFolders(prev => { const n = new Set(prev); n.add(id); return n })
+      return
+    }
+    // Folder bersandi → semua (termasuk admin) harus masukkan sandi
+    setSandiTargetFolder(folder)
+    setInputSandi('')
+    setSandiError('')
+    setShowInputSandi(true)
+  }
+
+  function handleKonfirmasiSandi() {
+    if (!sandiTargetFolder) return
+    if (inputSandi === sandiTargetFolder.password) {
+      setOpenFolders(prev => { const n = new Set(prev); n.add(sandiTargetFolder.id); return n })
+      setShowInputSandi(false)
+    } else {
+      setSandiError('Sandi salah, coba lagi')
+    }
   }
 
   // ── Buat Folder ────────────────────────────────────────────
@@ -311,7 +338,7 @@ export default function FolderArsipPage() {
                 {/* Header Folder */}
                 <div
                   className="px-5 py-4 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors"
-                  onClick={() => toggleFolder(folder.id)}
+                  onClick={() => toggleFolder(folder)}
                 >
                   {isOpen
                     ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
@@ -627,6 +654,63 @@ export default function FolderArsipPage() {
                 <button onClick={handleUploadDokumen} disabled={uploading || !uploadFile} className="btn-primary flex-1">
                   {uploading ? <div className="spinner" /> : <Upload className="w-4 h-4" />}
                   {uploading ? 'Mengupload...' : 'Upload'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Modal: Masukkan Sandi Folder ── */}
+      {showInputSandi && sandiTargetFolder && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowInputSandi(false) }}>
+          <div className="modal-content max-w-sm">
+            <div className="gradient-header p-5 flex items-center justify-between rounded-t-2xl">
+              <div>
+                <h2 className="font-display font-bold text-lg">Folder Bersandi</h2>
+                <p className="text-white/70 text-sm flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5" /> {sandiTargetFolder.nama}
+                </p>
+              </div>
+              <button onClick={() => setShowInputSandi(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="label">Masukkan Sandi</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="Sandi folder..."
+                  value={inputSandi}
+                  onChange={e => { setInputSandi(e.target.value); setSandiError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleKonfirmasiSandi()}
+                  autoFocus
+                />
+                {sandiError && (
+                  <p className="text-xs text-rose-500 mt-1">{sandiError}</p>
+                )}
+              </div>
+
+              {/* Khusus Admin: tampilkan sandi asli jika lupa */}
+              {isAdmin && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                  <p className="text-xs text-amber-700 font-medium mb-2 flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5" /> Akses Admin — Lupa sandi?
+                  </p>
+                  <button
+                    onClick={() => setInputSandi(sandiTargetFolder.password || '')}
+                    className="text-xs text-amber-700 underline hover:text-amber-900"
+                  >
+                    Isi otomatis dengan sandi folder ini
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowInputSandi(false)} className="btn-secondary flex-1">Batal</button>
+                <button onClick={handleKonfirmasiSandi} className="btn-primary flex-1">
+                  <Unlock className="w-4 h-4" /> Buka Folder
                 </button>
               </div>
             </div>
